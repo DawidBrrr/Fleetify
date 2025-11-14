@@ -4,9 +4,17 @@
 /node_modules
 /.pnp
 .pnp.js
+dist/
+build/
+tmp/
+.turbo/
+.parcel-cache/
+storybook-static/
 
 # testing
 /coverage
+.eslintcache
+.stylelintcache
 
 # next.js
 /.next/
@@ -17,7 +25,15 @@
 
 # misc
 .DS_Store
+Thumbs.db
 *.pem
+.idea/
+.vscode/
+*.log
+*.tmp
+*.swp
+*.swo
+*.orig
 
 # debug
 npm-debug.log*
@@ -27,6 +43,11 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.envrc
+.python-version
+.env.test
+.env.development
+.env.production
 
 # vercel
 .vercel
@@ -34,3 +55,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python
+__pycache__/
+*.py[cod]
+*.sqlite3
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
