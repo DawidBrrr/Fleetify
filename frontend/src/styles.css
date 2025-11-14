@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #0f1c2e;
+  background-color: #f7fbff;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #f7fbff;
+}
+
+.gradient-hero {
+  background: radial-gradient(circle at 20% 20%, rgba(5, 180, 217, 0.25), transparent 50%),
+    radial-gradient(circle at 80% 0%, rgba(96, 125, 148, 0.4), transparent 40%),
+    linear-gradient(135deg, #031126, #0f1c2e 60%, #06263b);
+}
+
+.glass-panel {
+  backdrop-filter: blur(18px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+}
+
+.section-shell {
+  border-radius: 30px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(15, 28, 46, 0.08);
+}
+
+.icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(5, 180, 217, 0.12);
+  color: #05b4d9;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.max-w-420 {
+  max-width: 420px;
+}
+
+.mini-panel {
+  background: #f1f7fb;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: inset 0 0 0 1px rgba(96, 125, 148, 0.15);
+}
+
+.panel-card {
+  border-radius: 28px;
+  padding: 32px;
+  background: #fdfefe;
+  border: 1px solid rgba(96, 125, 148, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel-card--active {
+  box-shadow: 0 25px 65px rgba(5, 180, 217, 0.2);
+  transform: translateY(-6px);
+  border-color: rgba(5, 180, 217, 0.4);
+}
+
+.metric-tile {
+  border-radius: 18px;
+  padding: 16px;
+  background: #f5f9fc;
+  border: 1px dashed rgba(96, 125, 148, 0.4);
+}
+
+.badge.bg-fleet-cyan {
+  background-color: #05b4d9 !important;
+}
+
+.btn-dark {
+  background-color: #0f1c2e;
+  border: none;
+}
+
+.btn-outline-secondary {
+  border-color: rgba(15, 28, 46, 0.2);
+}
