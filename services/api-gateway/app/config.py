@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass,field
 
 
 def env(key: str, default: str | None = None) -> str:
@@ -12,6 +12,18 @@ def env(key: str, default: str | None = None) -> str:
     return value
 
 
+def _allowed_origins_factory() -> list[str]:
+    return os.getenv("ALLOWED_ORIGINS", "*").split(",")
+
+
+def _service_endpoints_factory() -> dict[str, str]:
+    return {
+        "auth": env("AUTH_SERVICE_URL", "http://localhost:8000"),
+        "analytics": env("ANALYTICS_SERVICE_URL", "http://localhost:9000"),
+        "notifications": env("NOTIFICATIONS_SERVICE_URL", "http://localhost:9100"),
+    }
+
+
 @dataclass(slots=True)
 class BaseConfig:
     SECRET_KEY: str = env("SECRET_KEY", "dev-secret")
@@ -19,11 +31,11 @@ class BaseConfig:
     PROPAGATE_EXCEPTIONS: bool = True
     RATELIMIT_DEFAULT: str = env("RATE_LIMIT_DEFAULT", "60 per minute")
     RATELIMIT_HEADERS_ENABLED: bool = True
-    ALLOWED_ORIGINS: list[str] = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-    AUTH_SERVICE_URL: str = env("AUTH_SERVICE_URL", "http://localhost:8000")
-    ANALYTICS_SERVICE_URL: str = env("ANALYTICS_SERVICE_URL", "http://localhost:9000")
-    NOTIFICATIONS_SERVICE_URL: str = env("NOTIFICATIONS_SERVICE_URL", "http://localhost:9100")
+    ALLOWED_ORIGINS: list[str] = field(default_factory=_allowed_origins_factory)
     INTERNAL_HMAC_SECRET: str = env("INTERNAL_HMAC_SECRET", "demo-hmac")
+    SERVICE_TIMEOUT: float = float(os.getenv("SERVICE_TIMEOUT", "5.0"))
+    SERVICE_ENDPOINTS: dict[str, str] = field(default_factory=_service_endpoints_factory)
+
 
 
 @dataclass(slots=True)
