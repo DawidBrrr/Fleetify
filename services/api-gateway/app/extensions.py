@@ -13,6 +13,7 @@ class RequestID:
     """Attach a correlation/request ID to each incoming request."""
 
     def init_app(self, app):  # type: ignore[override]
+        """Register hooks that add X-Request-ID to Flask's context and responses."""
         @app.before_request
         def assign_request_id():  # pragma: no cover - trivial
             g.request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
@@ -23,6 +24,7 @@ class RequestID:
             return response
 
 
+# Shared extension singletons configured in app factory.
 cors = CORS()
 limiter = Limiter(key_func=get_remote_address, storage_uri="memory://")
 request_id = RequestID()

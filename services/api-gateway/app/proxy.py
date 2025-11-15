@@ -12,6 +12,7 @@ from .security import sign_payload
 
 
 def _get_base_url(service_key: str) -> str:
+    """Resolve and normalize the base URL for a downstream service."""
     try:
         base_url = current_app.config["SERVICE_ENDPOINTS"][service_key]
     except KeyError as exc:  # pragma: no cover - config issue
@@ -20,6 +21,7 @@ def _get_base_url(service_key: str) -> str:
 
 
 def _build_headers(body: dict[str, Any] | None, extra: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Construct gateway headers including signatures and optional passthrough values."""
     payload = json.dumps(body or {}, sort_keys=True)
     headers = {
         "X-Gateway-Signature": sign_payload(payload),
@@ -40,6 +42,7 @@ def forward_request(
     headers: Mapping[str, str] | None = None,
     params: Mapping[str, Any] | None = None,
 ) -> tuple[Any, int, Mapping[str, str]]:
+    """Send an HTTP request to the target service and normalize the response tuple."""
     url = f"{_get_base_url(service)}/{path.lstrip('/')}"
     timeout = current_app.config["SERVICE_TIMEOUT"]
     request_headers = _build_headers(body, headers)

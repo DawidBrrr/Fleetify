@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass,field
+from dataclasses import dataclass, field
 
 
 def env(key: str, default: str | None = None) -> str:
+    """Read an environment variable or raise when a required key is missing."""
     value = os.getenv(key, default)
     if value is None:
         raise RuntimeError(f"Missing required environment variable: {key}")
@@ -13,10 +14,12 @@ def env(key: str, default: str | None = None) -> str:
 
 
 def _allowed_origins_factory() -> list[str]:
+    """Build a fresh list of allowed origins for every config instance."""
     return os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
 
 def _service_endpoints_factory() -> dict[str, str]:
+    """Collect downstream service base URLs with sensible local defaults."""
     return {
         "auth": env("AUTH_SERVICE_URL", "http://localhost:8000"),
         "analytics": env("ANALYTICS_SERVICE_URL", "http://localhost:9000"),
@@ -26,6 +29,7 @@ def _service_endpoints_factory() -> dict[str, str]:
 
 @dataclass(slots=True)
 class BaseConfig:
+    """Baseline gateway configuration shared by every environment."""
     SECRET_KEY: str = env("SECRET_KEY", "dev-secret")
     JSON_SORT_KEYS: bool = False
     PROPAGATE_EXCEPTIONS: bool = True
@@ -40,11 +44,13 @@ class BaseConfig:
 
 @dataclass(slots=True)
 class DevelopmentConfig(BaseConfig):
+    """Verbose/debug-friendly settings for local development."""
     DEBUG: bool = True
 
 
 @dataclass(slots=True)
 class ProductionConfig(BaseConfig):
+    """Hardened settings for production deployments."""
     DEBUG: bool = False
 
 
@@ -55,5 +61,6 @@ CONFIG_MAP = {
 
 
 def get_config(config_name: str | None) -> type[BaseConfig]:
+    """Return the config class matching the supplied or FLASK_ENV value."""
     env_name = config_name or os.getenv("FLASK_ENV", "development").lower()
     return CONFIG_MAP.get(env_name, DevelopmentConfig)
