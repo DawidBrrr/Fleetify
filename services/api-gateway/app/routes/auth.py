@@ -10,10 +10,12 @@ auth_bp = Blueprint("auth", __name__)
 
 
 def _body() -> dict | None:
+    """Return JSON payload or None without raising on invalid JSON."""
     return request.get_json(silent=True) or None
 
 
 def _auth_headers() -> dict[str, str]:
+    """Forward Authorization header to downstream auth service when present."""
     token = request.headers.get("Authorization")
     return {"Authorization": token} if token else {}
 

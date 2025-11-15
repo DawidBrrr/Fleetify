@@ -7,6 +7,7 @@ from ..proxy import GatewayUpstreamError, forward_request
 
 
 def proxy_json(service: str, *, method: str, path: str, body=None, headers=None, params=None) -> Response:
+    """Forward a request via the proxy helper and convert payloads into Flask responses."""
     try:
         payload, status, upstream_headers = forward_request(
             service, method=method, path=path, body=body, headers=headers, params=params

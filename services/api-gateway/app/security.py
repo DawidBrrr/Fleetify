@@ -13,22 +13,26 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 @dataclass(slots=True)
 class TokenPayload:
+    """Typed representation of JWT claims passed around the gateway."""
     role: str
     email: str
     name: str
 
 
 def _serializer() -> URLSafeTimedSerializer:
+    """Create a serializer bound to the gateway secret and salt."""
     return URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="fleetify-gateway")
 
 
 def sign_token(payload: dict[str, Any], expires_in: int = 3600) -> str:
+    """Produce a signed token with an absolute expiry timestamp."""
     timestamp = int(time.time()) + expires_in
     data = {**payload, "exp": timestamp}
     return _serializer().dumps(data)
 
 
 def verify_token(token: str) -> dict[str, Any]:
+    """Validate a token signature and ensure the exp claim is still valid."""
     try:
         data = _serializer().loads(token, max_age=7200)
     except BadSignature as exc:  # pragma: no cover - simple mapping
@@ -39,10 +43,12 @@ def verify_token(token: str) -> dict[str, Any]:
 
 
 def sign_payload(payload: str) -> str:
+    """Generate an HMAC signature shared with downstream services."""
     secret = current_app.config["INTERNAL_HMAC_SECRET"].encode()
     return hmac.new(secret, payload.encode(), hashlib.sha256).hexdigest()
 
 
 def is_signature_valid(payload: str, signature: str) -> bool:
+    """Constant-time comparison so upstream signatures cannot be replayed."""
     expected = sign_payload(payload)
     return hmac.compare_digest(expected, signature)

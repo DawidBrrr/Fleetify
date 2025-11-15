@@ -9,6 +9,7 @@ from .notifications import notifications_bp
 
 
 def register_blueprints(app: Flask) -> None:
+    """Attach every blueprint so the gateway exposes its public API surface."""
     app.register_blueprint(errors_bp)
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp, url_prefix="/api")
