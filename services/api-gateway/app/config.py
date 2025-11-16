@@ -27,6 +27,12 @@ def _service_endpoints_factory() -> dict[str, str]:
     }
 
 
+def _api_keys_factory() -> list[str]:
+    """Load API keys from the environment allowing comma-separated entries."""
+    raw_keys = os.getenv("GATEWAY_API_KEYS", "fleetify-dev-key")
+    return [key.strip() for key in raw_keys.split(",") if key.strip()]
+
+
 @dataclass(slots=True)
 class BaseConfig:
     """Baseline gateway configuration shared by every environment."""
@@ -39,6 +45,7 @@ class BaseConfig:
     INTERNAL_HMAC_SECRET: str = env("INTERNAL_HMAC_SECRET", "demo-hmac")
     SERVICE_TIMEOUT: float = float(os.getenv("SERVICE_TIMEOUT", "5.0"))
     SERVICE_ENDPOINTS: dict[str, str] = field(default_factory=_service_endpoints_factory)
+    GATEWAY_API_KEYS: list[str] = field(default_factory=_api_keys_factory)
 
 
 
