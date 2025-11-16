@@ -1,13 +1,14 @@
-"""Security helpers: token signing, HMAC signatures."""
+"""Security helpers: token signing, HMAC signatures, API key enforcement."""
 from __future__ import annotations
 
 import hashlib
 import hmac
 import time
 from dataclasses import dataclass
+from functools import wraps
 from typing import Any
 
-from flask import current_app
+from flask import current_app, request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 
@@ -52,3 +53,29 @@ def is_signature_valid(payload: str, signature: str) -> bool:
     """Constant-time comparison so upstream signatures cannot be replayed."""
     expected = sign_payload(payload)
     return hmac.compare_digest(expected, signature)
+
+
+API_KEY_HEADER = "X-API-Key"
+
+
+def _valid_api_keys() -> set[str]:
+    """Return the configured API keys as a normalized set."""
+    configured = current_app.config.get("GATEWAY_API_KEYS") or []
+    return {key for key in configured if isinstance(key, str) and key}
+
+
+def require_api_key(view_func):
+    """Decorator enforcing that callers supply a valid gateway API key."""
+
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        api_key = request.headers.get(API_KEY_HEADER, "").strip()
+        if not api_key:
+            raise PermissionError("API key required")
+
+        if api_key not in _valid_api_keys():
+            raise PermissionError("Invalid API key")
+
+        return view_func(*args, **kwargs)
+
+    return wrapper

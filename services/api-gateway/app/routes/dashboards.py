@@ -4,6 +4,7 @@ from __future__ import annotations
 from flask import Blueprint, request
 
 from ..extensions import limiter
+from ..security import require_api_key
 from .utils import proxy_json
 
 dashboards_bp = Blueprint("dashboards", __name__)
@@ -16,6 +17,7 @@ def _auth_headers() -> dict[str, str]:
 
 
 @dashboards_bp.get("/dashboard/admin")
+@require_api_key
 @limiter.limit("60 per minute")
 def admin_dashboard():
     """Proxy admin metrics with original query params and auth headers."""
@@ -29,6 +31,7 @@ def admin_dashboard():
 
 
 @dashboards_bp.get("/dashboard/employee")
+@require_api_key
 @limiter.limit("60 per minute")
 def employee_dashboard():
     """Proxy employee dashboard metrics for the current user."""
@@ -42,6 +45,7 @@ def employee_dashboard():
 
 
 @dashboards_bp.get("/dashboard/vehicles")
+@require_api_key
 @limiter.limit("90 per minute")
 def vehicles_snapshot():
     """Return fleet telemetry snapshot from analytics service."""

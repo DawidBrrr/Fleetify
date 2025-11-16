@@ -4,6 +4,7 @@ from __future__ import annotations
 from flask import Blueprint, request
 
 from ..extensions import limiter
+from ..security import require_api_key
 from .utils import proxy_json
 
 notifications_bp = Blueprint("notifications", __name__)
@@ -16,6 +17,7 @@ def _auth_headers():
 
 
 @notifications_bp.post("/notifications/send")
+@require_api_key
 @limiter.limit("15 per minute")
 def send_notification():
     """Relay notification payloads to the downstream service."""
@@ -29,6 +31,7 @@ def send_notification():
 
 
 @notifications_bp.get("/notifications/history")
+@require_api_key
 @limiter.limit("30 per minute")
 def notification_history():
     """Fetch notification history for the current user/team."""
