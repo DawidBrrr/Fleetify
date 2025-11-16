@@ -56,6 +56,7 @@ def is_signature_valid(payload: str, signature: str) -> bool:
 
 
 API_KEY_HEADER = "X-API-Key"
+PAYLOAD_SIGNATURE_HEADER = "X-Client-Signature"
 
 
 def _valid_api_keys() -> set[str]:
@@ -75,6 +76,25 @@ def require_api_key(view_func):
 
         if api_key not in _valid_api_keys():
             raise PermissionError("Invalid API key")
+
+        return view_func(*args, **kwargs)
+
+    return wrapper
+
+
+def require_signed_payload(view_func):
+    """Ensure mutating requests carry a valid HMAC signature."""
+
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        signature = request.headers.get(PAYLOAD_SIGNATURE_HEADER, "").strip()
+        if not signature:
+            raise PermissionError("Payload signature required")
+
+        body = request.get_data(cache=True, as_text=True) or ""
+        expected = sign_payload(body)
+        if not hmac.compare_digest(signature, expected):
+            raise PermissionError("Invalid payload signature")
 
         return view_func(*args, **kwargs)
 

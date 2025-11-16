@@ -4,7 +4,7 @@ from __future__ import annotations
 from flask import Blueprint, request
 
 from ..extensions import limiter
-from ..security import require_api_key
+from ..security import require_api_key, require_signed_payload
 from .utils import proxy_json
 
 notifications_bp = Blueprint("notifications", __name__)
@@ -18,6 +18,7 @@ def _auth_headers():
 
 @notifications_bp.post("/notifications/send")
 @require_api_key
+@require_signed_payload
 @limiter.limit("15 per minute")
 def send_notification():
     """Relay notification payloads to the downstream service."""
