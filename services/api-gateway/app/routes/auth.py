@@ -4,7 +4,10 @@ from __future__ import annotations
 from flask import Blueprint, request
 
 from ..extensions import limiter
+from ..security import require_api_key
 from .utils import proxy_json
+
+from loguru import logger
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -24,7 +27,12 @@ def _auth_headers() -> dict[str, str]:
 @limiter.limit("20 per minute")
 def login():
     """Authenticate user credentials via auth service."""
-    return proxy_json("auth", method="POST", path="/auth/login", body=_body())
+    logger.info("Login attempt")
+    body = _body()
+    logger.debug(f"Login payload: {body}")
+    response = proxy_json("auth", method="POST", path="/auth/login", body=body)
+    logger.info(f"Login response: {response.status_code}")
+    return response
 
 
 @auth_bp.post("/refresh")
