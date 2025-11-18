@@ -11,6 +11,7 @@ from typing import Any
 from flask import current_app, request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
+from .extensions import logger
 
 @dataclass(slots=True)
 class TokenPayload:
@@ -72,9 +73,16 @@ def require_api_key(view_func):
     def wrapper(*args, **kwargs):
         api_key = request.headers.get(API_KEY_HEADER, "").strip()
         if not api_key:
+            logger.warning("Missing API key on {method} {path}", method=request.method, path=request.path)
             raise PermissionError("API key required")
 
         if api_key not in _valid_api_keys():
+            logger.warning(
+                "Invalid API key attempt on {method} {path} from {addr}",
+                method=request.method,
+                path=request.path,
+                addr=request.remote_addr,
+            )
             raise PermissionError("Invalid API key")
 
         return view_func(*args, **kwargs)
@@ -89,11 +97,18 @@ def require_signed_payload(view_func):
     def wrapper(*args, **kwargs):
         signature = request.headers.get(PAYLOAD_SIGNATURE_HEADER, "").strip()
         if not signature:
+            logger.warning("Missing payload signature on {method} {path}", method=request.method, path=request.path)
             raise PermissionError("Payload signature required")
 
         body = request.get_data(cache=True, as_text=True) or ""
         expected = sign_payload(body)
         if not hmac.compare_digest(signature, expected):
+            logger.warning(
+                "Invalid payload signature on {method} {path} from {addr}",
+                method=request.method,
+                path=request.path,
+                addr=request.remote_addr,
+            )
             raise PermissionError("Invalid payload signature")
 
         return view_func(*args, **kwargs)

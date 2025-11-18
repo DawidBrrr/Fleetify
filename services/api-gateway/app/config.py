@@ -32,6 +32,11 @@ def _api_keys_factory() -> list[str]:
     raw_keys = os.getenv("GATEWAY_API_KEYS", "fleetify-dev-key")
     return [key.strip() for key in raw_keys.split(",") if key.strip()]
 
+"""TO BE REMOVED ONLY FOR TESTING PURPOSES"""
+def _mock_toggle() -> bool:
+    """Return True when mock downstream responses should be served."""
+    return os.getenv("ENABLE_DOWNSTREAM_MOCKS", "false").lower() in {"1", "true", "yes"}
+
 
 @dataclass(slots=True)
 class BaseConfig:
@@ -46,6 +51,9 @@ class BaseConfig:
     SERVICE_TIMEOUT: float = float(os.getenv("SERVICE_TIMEOUT", "5.0"))
     SERVICE_ENDPOINTS: dict[str, str] = field(default_factory=_service_endpoints_factory)
     GATEWAY_API_KEYS: list[str] = field(default_factory=_api_keys_factory)
+
+    """TO BE REMOVED ONLY FOR TESTING PURPOSES"""
+    ENABLE_DOWNSTREAM_MOCKS: bool = field(default_factory=_mock_toggle)
 
 
 
