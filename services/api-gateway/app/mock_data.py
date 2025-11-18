@@ -10,18 +10,50 @@ MOCK_PAYLOADS: Dict[MockKey, MockValue] = {
     # Analytics dashboards
     ("analytics", "GET", "/dashboards/admin"): (
         {
-            "summary": {"activeUsers": 1280, "fleetUtilization": 0.82, "alertsOpen": 12},
-            "trend": [64, 72, 70, 85, 91, 88, 94],
+            "stats": [
+                {"label": "Aktywne pojazdy", "value": 128, "delta": "+4", "tone": "success"},
+                {"label": "Średnie zużycie paliwa", "value": "6.8 l/100km", "delta": "-0.3", "tone": "success"},
+                {"label": "Alerty krytyczne", "value": 5, "delta": "-2", "tone": "warning"},
+                {"label": "Dostępność floty", "value": "92%", "delta": "+3%", "tone": "info"},
+            ],
+            "fleetHealth": [
+                {"id": "WX-432", "model": "Skoda Enyaq", "status": "OK", "location": "Warszawa HQ", "battery": 82},
+                {"id": "GD-218", "model": "Tesla Model 3", "status": "Serwis", "location": "Gdańsk", "battery": 54},
+                {"id": "KR-019", "model": "VW Crafter", "status": "OK", "location": "Kraków", "battery": 0},
+            ],
+            "alerts": [
+                {"id": "ALT-311", "type": "Serwis", "severity": "warning", "message": "Przegląd VW Crafter opóźniony o 5 dni."},
+                {"id": "ALT-312", "type": "Telemetria", "severity": "info", "message": "Spadek jakości sygnału dla 6 urządzeń IoT."},
+                {"id": "ALT-313", "type": "Bezpieczeństwo", "severity": "danger", "message": "Niespodziewany postój pojazdu KR-019."},
+            ],
+            "costBreakdown": {"fuel": 42, "service": 25, "insurance": 11, "leasing": 22},
         },
         200,
     ),
     ("analytics", "GET", "/dashboards/employee"): (
         {
-            "tasks": [
-                {"id": "TK-100", "status": "open", "priority": "high"},
-                {"id": "TK-101", "status": "in_progress", "priority": "medium"},
+            "assignment": {
+                "vehicle": {
+                    "id": "WL-2043",
+                    "model": "Hyundai IONIQ 5",
+                    "vin": "KMHAA81CRNU123456",
+                    "mileage": "18 430 km",
+                    "battery": 74,
+                    "tirePressure": "OK",
+                },
+                "tasks": [
+                    {"id": "TASK-01", "label": "Odbiór klienta – lotnisko"},
+                    {"id": "TASK-02", "label": "Wizyta w serwisie partnerskim"},
+                ],
+            },
+            "trips": [
+                {"id": 1, "route": "Warszawa ↔ Łódź", "distance": "264 km", "cost": "78 PLN", "efficiency": "6.1 l/100km"},
+                {"id": 2, "route": "Warszawa ↔ Poznań", "distance": "580 km", "cost": "122 PLN", "efficiency": "6.9 l/100km"},
             ],
-            "performanceScore": 92,
+            "reminders": [
+                {"id": "REM-1", "message": "Kontrola opon za 12 dni", "severity": "info"},
+                {"id": "REM-2", "message": "Raport wydatków za 3 dni", "severity": "warning"},
+            ],
         },
         200,
     ),
@@ -44,11 +76,15 @@ MOCK_PAYLOADS: Dict[MockKey, MockValue] = {
     # Auth service mocks
     ("auth", "POST", "/auth/login"): (
         {
-            "access_token": "mock-access-token",
-            "refresh_token": "mock-refresh-token",
-            "user": {"id": "demo-user", "email": "demo@example.com", "role": "admin"},
+            "token": "mock-admin-token",
+            "user": {
+                "role": "admin",
+                "name": "Alicja Fleet",
+                "email": "admin@fleetify.io",
+                "avatar": "https://i.pravatar.cc/120?img=47",
+            },
         },
-        202,
+        200,
     ),
     ("auth", "POST", "/auth/refresh"): (
         {"access_token": "refreshed-access-token", "refresh_token": "refreshed-refresh-token"},
