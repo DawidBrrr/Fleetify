@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  gateway:
+    build:
+      context: ./services/api-gateway
+    env_file:
+      - services/api-gateway/.env
+    ports:
+      - "8080:8080"
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    env_file:
+      - frontend/.env
+    ports:
+      - "5173:5173"
+    depends_on:
+      - gateway
+
+volumes:
+  frontend_node_modules:

@@ -7,7 +7,7 @@ import DashboardPreview from "./components/DashboardPreview";
 import Footer from "./components/Footer";
 import DashboardPage from "./components/DashboardPage";
 import TransitionOverlay from "./components/TransitionOverlay";
-import { apiClient } from "./services/mockApi";
+import { authApi, dashboardApi } from "./services/api";
 import { adminPanel, employeePanel, featureCards } from "./constants";
 
 export default function App() {
@@ -20,25 +20,34 @@ export default function App() {
   const handleLogin = async ({ username, password }) => {
     setLoginState({ loading: true, error: "" });
     try {
-      const { data } = await apiClient.login({ username, password });
-      const role = data.user.role === "employee" ? "employee" : "admin";
-      setSession({ status: "authenticated", user: data.user });
+      const loginData = await authApi.login({ username, password });
+      const role = loginData.user.role === "employee" ? "employee" : "admin";
+      localStorage.setItem("token", loginData.token);
+      setSession({ status: "authenticated", user: loginData.user });
       setPreviewRole(role);
       setViewMode("transition");
 
-      const dashboardResponse = await apiClient.fetchDashboard(role);
-      setDashboardData(dashboardResponse.data);
+      const dashboardResponse =
+        role === "employee" ? await dashboardApi.fetchEmployee() : await dashboardApi.fetchAdmin();
+      setDashboardData(dashboardResponse);
       setLoginState({ loading: false, error: "" });
       setTimeout(() => setViewMode("dashboard"), 1200);
     } catch (error) {
       setSession({ status: "loggedOut" });
       setDashboardData(null);
+      localStorage.removeItem("token");
       setLoginState({ loading: false, error: error.message || "Nie udało się zalogować" });
       setViewMode("landing");
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.warn("Logout request failed", error);
+    }
+    localStorage.removeItem("token");
     setSession({ status: "loggedOut" });
     setDashboardData(null);
     setPreviewRole("admin");
