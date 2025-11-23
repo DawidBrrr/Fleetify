@@ -6,7 +6,7 @@ This folder packages everything required to run Fleetify's PostgreSQL instance l
 
 | File/Folder | Purpose |
 |-------------|---------|
-| `Dockerfile` | Builds a Postgres 18 image that auto-loads the schema on first boot. |
+| `Dockerfile` | Builds a Postgres 18 image that auto-loads the schema on first boot (with default ENV credentials). |
 | `manage.py` | Command-line helper to create/reset the database or inspect table status. |
 | `requirements.txt` | Dependencies for the helper CLI (`psycopg2-binary`, `python-dotenv`). |
 | `sql/*.sql` | Ordered schema + seed scripts consumed by Postgres and the CLI. |
@@ -45,6 +45,13 @@ This folder packages everything required to run Fleetify's PostgreSQL instance l
      volumes:
        - db_data:/var/lib/postgresql/data
    ```
+
+> **Password changes?** Remove the volume so Postgres can re-read the new ENV values:
+> ```powershell
+> docker compose down db
+> docker volume rm fleetify_db_data
+> docker compose up -d db
+> ```
 
 ## Using the CLI
 

@@ -1,4 +1,3 @@
-# Custom PostgreSQL image for Fleetify
 FROM postgres:18-alpine
 
 # Copy schema files so a fresh container auto-initializes the database
