@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover - optional helper
 
 ROOT = Path(__file__).parent
 SQL_DIR = ROOT / "sql"
-DEFAULT_DSN = "postgresql://fleetify:fleetify_password@localhost:5432/fleetify_core"
+DEFAULT_DSN = "postgresql://fleetify:super_secret_db_password@localhost:5432/fleetify_core"
 
 
 def load_env() -> None:
@@ -32,9 +32,18 @@ def load_env() -> None:
         load_dotenv(env_path)
 
 
+def computed_default_dsn() -> str:
+    user = os.getenv("POSTGRES_USER", "fleetify")
+    password = os.getenv("POSTGRES_PASSWORD", "super_secret_db_password")
+    host = os.getenv("POSTGRES_HOST", "localhost")
+    port = os.getenv("POSTGRES_PORT", "5432")
+    database = os.getenv("POSTGRES_DB", "fleetify_core")
+    return f"postgresql://{user}:{password}@{host}:{port}/{database}"
+
+
 def resolve_dsn(cli_value: str | None) -> str:
-    """Prefer CLI DSN, then DATABASE_URL env, then a helpful default."""
-    return cli_value or os.getenv("DATABASE_URL") or DEFAULT_DSN
+    """Prefer CLI DSN, then DATABASE_URL env, then derived env defaults."""
+    return cli_value or os.getenv("DATABASE_URL") or computed_default_dsn()
 
 
 def _parsed_dsn(dsn: str):
@@ -48,7 +57,8 @@ def database_exists(dsn: str) -> bool:
     try:
         with psycopg.connect(dsn):
             return True
-    except psycopg.OperationalError:
+    except psycopg.OperationalError as exc:
+        print(f"Database check failed for {dsn}: {exc}", file=sys.stderr)
         return False
 
 
