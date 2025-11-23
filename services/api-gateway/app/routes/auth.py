@@ -3,11 +3,10 @@ from __future__ import annotations
 
 from flask import Blueprint, request
 
-from ..extensions import limiter
+from ..extensions import limiter,logger
 from ..security import require_api_key
 from .utils import proxy_json
 
-from loguru import logger
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -46,4 +45,9 @@ def refresh_token():
 @limiter.limit("40 per minute")
 def logout():
     """Invalidate tokens upstream."""
-    return proxy_json("auth", method="POST", path="/auth/logout", body=_body(), headers=_auth_headers())
+    logger.info("Logout attempt")
+    body = _body()
+    logger.debug(f"Logout payload: {body}")
+    response = proxy_json("auth", method="POST", path="/auth/logout", body=body, headers=_auth_headers())
+    logger.info(f"Logout response: {response.status_code}")
+    return response
