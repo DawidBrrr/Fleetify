@@ -1,2 +1,2 @@
-psycopg2-binary==2.9.9
+psycopg[binary]==3.2.13
 python-dotenv==1.0.1

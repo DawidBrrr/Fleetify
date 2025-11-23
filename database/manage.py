@@ -9,10 +9,9 @@ from pathlib import Path
 from typing import Iterable
 from urllib.parse import urlparse, urlunparse
 
-import psycopg2
-from psycopg2 import sql
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from psycopg2.extras import DictCursor
+import psycopg
+from psycopg import sql
+from psycopg.rows import dict_row
 
 try:  # pragma: no cover - optional helper
     from dotenv import load_dotenv
@@ -47,9 +46,9 @@ def _parsed_dsn(dsn: str):
 
 def database_exists(dsn: str) -> bool:
     try:
-        with psycopg2.connect(dsn):
+        with psycopg.connect(dsn):
             return True
-    except psycopg2.OperationalError:
+    except psycopg.OperationalError:
         return False
 
 
@@ -57,14 +56,12 @@ def create_database_if_needed(dsn: str) -> None:
     parsed = _parsed_dsn(dsn)
     db_name = parsed.path.lstrip("/")
     admin_dsn = urlunparse(parsed._replace(path="/postgres"))
-    conn = psycopg2.connect(admin_dsn)
-    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-    with conn.cursor() as cur:
-        cur.execute("SELECT 1 FROM pg_database WHERE datname=%s", (db_name,))
-        if cur.fetchone():
-            return
-        cur.execute(sql.SQL("CREATE DATABASE {}" ).format(sql.Identifier(db_name)))
-    conn.close()
+    with psycopg.connect(admin_dsn, autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM pg_database WHERE datname=%s", (db_name,))
+            if cur.fetchone():
+                return
+            cur.execute(sql.SQL("CREATE DATABASE {}" ).format(sql.Identifier(db_name)))
 
 
 def iter_sql_files(include_seed: bool) -> Iterable[Path]:
@@ -79,7 +76,7 @@ def apply_sql_files(dsn: str, include_seed: bool) -> list[str]:
     files = list(iter_sql_files(include_seed))
     if not files:
         return applied
-    with psycopg2.connect(dsn) as conn:
+    with psycopg.connect(dsn) as conn:
         with conn.cursor() as cur:
             for path in files:
                 statement = path.read_text(encoding="utf-8")
@@ -101,7 +98,7 @@ def show_status(dsn: str) -> list[tuple[str, int]]:
         WHERE tab.table_schema = 'public'
         ORDER BY tab.table_name;
     """
-    with psycopg2.connect(dsn, cursor_factory=DictCursor) as conn:
+    with psycopg.connect(dsn, row_factory=dict_row) as conn:
         with conn.cursor() as cur:
             cur.execute(query)
             return [(row["table_name"], int(row["approx_rows"])) for row in cur.fetchall()]
@@ -111,12 +108,10 @@ def drop_database(dsn: str) -> None:
     parsed = _parsed_dsn(dsn)
     db_name = parsed.path.lstrip("/")
     admin_dsn = urlunparse(parsed._replace(path="/postgres"))
-    conn = psycopg2.connect(admin_dsn)
-    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-    with conn.cursor() as cur:
-        cur.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=%s", (db_name,))
-        cur.execute(sql.SQL("DROP DATABASE IF EXISTS {}" ).format(sql.Identifier(db_name)))
-    conn.close()
+    with psycopg.connect(admin_dsn, autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=%s", (db_name,))
+            cur.execute(sql.SQL("DROP DATABASE IF EXISTS {}" ).format(sql.Identifier(db_name)))
 
 
 def handle_init(args: argparse.Namespace) -> None:
