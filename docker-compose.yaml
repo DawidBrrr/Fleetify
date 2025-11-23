@@ -1,6 +1,16 @@
 version: "3.9"
 
 services:
+  db:
+    build:
+      context: ./database
+    env_file:
+      - database/.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
   gateway:
     build:
       context: ./services/api-gateway
@@ -25,3 +35,4 @@ services:
 
 volumes:
   frontend_node_modules:
+  db_data:
