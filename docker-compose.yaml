@@ -18,6 +18,18 @@ services:
       - services/api-gateway/.env
     ports:
       - "8080:8080"
+    
+  user-management:
+    build:
+      context: ./services/user-managment
+    env_file:
+      - services/user-managment/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - ./services/user-managment:/app
 
   frontend:
     image: node:20-alpine
