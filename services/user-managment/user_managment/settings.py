@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-hf5z5pt1&go3i*2lb)+rt%+edo+=!mer1mpko8_9*(9y=(777+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost','127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'user-management']
 
 
 # Application definition
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'user_managment.apps.UserManagmentConfig',
 ]
 
 MIDDLEWARE = [
@@ -79,8 +80,8 @@ DATABASES = {
         'NAME': 'fleetify_core',
         'USER': 'fleetify',
         'PASSWORD': 'super_secret_db_password',
-        'HOST': 'localhost',
-        'PORT': '5433',
+        'HOST': 'db',
+        'PORT': '5432',
     }
 }
 
@@ -125,3 +126,12 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'user_managment.authentication.SessionTokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
