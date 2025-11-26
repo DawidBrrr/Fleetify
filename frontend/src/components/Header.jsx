@@ -1,6 +1,6 @@
 import logo from "../assets/logo.svg";
 
-export default function Header({ onLoginClick }) {
+export default function Header({ onLoginClick, onRegisterClick }) {
   return (
     <header className="position-sticky top-0 z-50 bg-fleet-ice/95 border-bottom border-light shadow-sm">
       <div className="container-lg py-3 d-flex align-items-center justify-content-between gap-3">
@@ -20,6 +20,9 @@ export default function Header({ onLoginClick }) {
 
         <div className="d-flex gap-2">
           <button className="btn btn-link text-decoration-none text-dark">EN</button>
+          <button className="btn btn-outline-secondary px-4 rounded-pill" onClick={onRegisterClick}>
+            Zarejestruj się
+          </button>
           <button className="btn btn-primary px-4 rounded-pill bg-fleet-cyan border-0" onClick={onLoginClick}>
             Zaloguj
           </button>
