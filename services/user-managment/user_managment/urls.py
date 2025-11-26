@@ -21,6 +21,7 @@ from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/auth/register', views.RegisterView.as_view(), name='auth-register'),
     path('api/auth/login', views.LoginView.as_view(), name='auth-login'),
     path('api/auth/logout', views.LogoutView.as_view(), name='auth-logout'),
     path('api/users/me', views.MeView.as_view(), name='users-me'),

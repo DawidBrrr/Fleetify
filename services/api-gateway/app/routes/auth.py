@@ -34,6 +34,18 @@ def login():
     return response
 
 
+@auth_bp.post("/register")
+@limiter.limit("10 per minute")
+def register():
+    """Register a new user via auth service."""
+    logger.info("Registration attempt")
+    body = _body()
+    logger.debug(f"Register payload: {body}")
+    response = proxy_json("auth", method="POST", path="/api/auth/register", body=body)
+    logger.info(f"Register response: {response.status_code}")
+    return response
+
+
 @auth_bp.post("/refresh")
 @limiter.limit("40 per minute")
 def refresh_token():

@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework import generics, permissions, response, status, views
 
 from .models import User, UserSession
-from .serializers import LoginSerializer, UserSerializer
+from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer
 
 SESSION_TTL = timedelta(days=7)
 
@@ -57,6 +57,24 @@ class LoginView(views.APIView):
                 "user": UserSerializer(user).data,
             },
             status=status.HTTP_200_OK,
+        )
+
+
+class RegisterView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = RegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        session = create_session(user)
+        return response.Response(
+            {
+                "token": session.refresh_token,
+                "expires_at": session.expires_at,
+                "user": UserSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
         )
 
 
