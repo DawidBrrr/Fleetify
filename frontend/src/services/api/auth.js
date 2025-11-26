@@ -17,6 +17,15 @@ export const authApi = {
 		return handleResponse(response, "Login failed");
 	},
 
+	register: async (payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/register`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Registration failed");
+	},
+
 	refreshToken: async () => {
 		const response = await fetch(`${API_BASE_URL}/api/refresh`, {
 			method: "POST",

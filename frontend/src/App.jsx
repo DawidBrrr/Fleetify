@@ -7,6 +7,7 @@ import DashboardPreview from "./components/DashboardPreview";
 import Footer from "./components/Footer";
 import DashboardPage from "./components/DashboardPage";
 import TransitionOverlay from "./components/TransitionOverlay";
+import RegisterPage from "./components/RegisterPage";
 import { authApi, dashboardApi } from "./services/api";
 import { adminPanel, employeePanel, featureCards } from "./constants";
 
@@ -15,29 +16,50 @@ export default function App() {
   const [session, setSession] = useState({ status: "loggedOut", user: null });
   const [dashboardData, setDashboardData] = useState(null);
   const [loginState, setLoginState] = useState({ loading: false, error: "" });
-  const [viewMode, setViewMode] = useState("landing"); // landing | transition | dashboard
+  const [registerState, setRegisterState] = useState({ loading: false, error: "" });
+  const [viewMode, setViewMode] = useState("landing"); // landing | register | transition | dashboard
+
+  const startAuthenticatedSession = async (authPayload) => {
+    const role = authPayload.user.role === "employee" ? "employee" : "admin";
+    localStorage.setItem("token", authPayload.token);
+    setSession({ status: "authenticated", user: authPayload.user });
+    setPreviewRole(role);
+    setViewMode("transition");
+
+    const dashboardResponse =
+      role === "employee" ? await dashboardApi.fetchEmployee() : await dashboardApi.fetchAdmin();
+    setDashboardData(dashboardResponse);
+    setTimeout(() => setViewMode("dashboard"), 1200);
+  };
 
   const handleLogin = async ({ username, password }) => {
     setLoginState({ loading: true, error: "" });
     try {
-      const loginData = await authApi.login({ username, password });
-      const role = loginData.user.role === "employee" ? "employee" : "admin";
-      localStorage.setItem("token", loginData.token);
-      setSession({ status: "authenticated", user: loginData.user });
-      setPreviewRole(role);
-      setViewMode("transition");
-
-      const dashboardResponse =
-        role === "employee" ? await dashboardApi.fetchEmployee() : await dashboardApi.fetchAdmin();
-      setDashboardData(dashboardResponse);
+      const loginData = await authApi.login({ email: username, password });
+      await startAuthenticatedSession(loginData);
       setLoginState({ loading: false, error: "" });
-      setTimeout(() => setViewMode("dashboard"), 1200);
     } catch (error) {
       setSession({ status: "loggedOut" });
       setDashboardData(null);
       localStorage.removeItem("token");
       setLoginState({ loading: false, error: error.message || "Nie udało się zalogować" });
       setViewMode("landing");
+    }
+  };
+
+  const handleRegister = async ({ fullName, email, password, role }) => {
+    setRegisterState({ loading: true, error: "" });
+    try {
+      const registerData = await authApi.register({
+        full_name: fullName,
+        email,
+        password,
+        role,
+      });
+      await startAuthenticatedSession(registerData);
+      setRegisterState({ loading: false, error: "" });
+    } catch (error) {
+      setRegisterState({ loading: false, error: error.message || "Nie udało się utworzyć konta" });
     }
   };
 
@@ -54,14 +76,30 @@ export default function App() {
     setViewMode("landing");
   };
 
-  const showLanding = viewMode !== "dashboard";
+  const openRegister = () => {
+    setRegisterState({ loading: false, error: "" });
+    setViewMode("register");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const closeRegister = () => {
+    setRegisterState({ loading: false, error: "" });
+    setViewMode("landing");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const showLanding = viewMode !== "dashboard" && viewMode !== "register";
+  const showRegister = viewMode === "register";
   const showDashboard = viewMode === "dashboard" && session.status === "authenticated" && dashboardData;
 
   return (
     <>
       {showLanding && (
         <div className="bg-fleet-ice text-fleet-navy">
-          <Header onLoginClick={() => document.getElementById("login")?.scrollIntoView({ behavior: "smooth" })} />
+          <Header
+            onLoginClick={() => document.getElementById("login")?.scrollIntoView({ behavior: "smooth" })}
+            onRegisterClick={openRegister}
+          />
           <main>
             <Hero onCTAClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })} />
 
@@ -97,6 +135,15 @@ export default function App() {
 
       {showDashboard && (
         <DashboardPage session={session} data={dashboardData} onLogout={handleLogout} />
+      )}
+
+      {showRegister && (
+        <RegisterPage
+          onRegister={handleRegister}
+          onBack={closeRegister}
+          loading={registerState.loading}
+          error={registerState.error}
+        />
       )}
 
       {viewMode === "transition" && session.user && (

@@ -29,8 +29,20 @@ def login():
     logger.info("Login attempt")
     body = _body()
     logger.debug(f"Login payload: {body}")
-    response = proxy_json("auth", method="POST", path="/auth/login", body=body)
+    response = proxy_json("auth", method="POST", path="/api/auth/login", body=body)
     logger.info(f"Login response: {response.status_code}")
+    return response
+
+
+@auth_bp.post("/register")
+@limiter.limit("10 per minute")
+def register():
+    """Register a new user via auth service."""
+    logger.info("Registration attempt")
+    body = _body()
+    logger.debug(f"Register payload: {body}")
+    response = proxy_json("auth", method="POST", path="/api/auth/register", body=body)
+    logger.info(f"Register response: {response.status_code}")
     return response
 
 
@@ -38,7 +50,7 @@ def login():
 @limiter.limit("40 per minute")
 def refresh_token():
     """Refresh JWT/Session tokens."""
-    return proxy_json("auth", method="POST", path="/auth/refresh", body=_body(), headers=_auth_headers())
+    return proxy_json("auth", method="POST", path="/api/auth/refresh", body=_body(), headers=_auth_headers())
 
 
 @auth_bp.post("/logout")
@@ -48,6 +60,6 @@ def logout():
     logger.info("Logout attempt")
     body = _body()
     logger.debug(f"Logout payload: {body}")
-    response = proxy_json("auth", method="POST", path="/auth/logout", body=body, headers=_auth_headers())
+    response = proxy_json("auth", method="POST", path="/api/auth/logout", body=body, headers=_auth_headers())
     logger.info(f"Logout response: {response.status_code}")
     return response
