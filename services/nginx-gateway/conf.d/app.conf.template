@@ -1,0 +1,46 @@
+# Use Docker's internal DNS resolver
+resolver 127.0.0.11 ipv6=off;
+
+server {
+    listen 8080;
+    
+    # Health checks
+    location /healthz {
+        access_log off;
+        default_type application/json;
+        return 200 '{"status":"ok"}';
+    }
+    
+    location /readyz {
+        access_log off;
+        default_type application/json;
+        return 200 '{"status":"ready"}';
+    }
+
+    # Frontend
+    location / {
+        proxy_pass ${FRONTEND_URL};
+        include /etc/nginx/includes/proxy.conf;
+    }
+
+    # Auth Service Routes
+    location ~ ^/api/(login|register|refresh|logout)$ {
+        include /etc/nginx/includes/cors.conf;
+        include /etc/nginx/includes/proxy.conf;
+        
+        access_by_lua_block {
+            assert(loadfile("/etc/nginx/lua/auth.lua"))()
+            assert(loadfile("/etc/nginx/lua/sign.lua"))()
+        }
+        
+        rewrite ^/api/(.*) /api/auth/$1 break;
+        proxy_pass ${USER_MANAGEMENT_URL};
+    }
+
+    # Catch-all for other API routes to prevent falling back to frontend
+    location /api/ {
+        default_type application/json;
+        return 404 '{"error": "Not Found", "message": "API endpoint not found or service missing"}';
+    }
+    
+}
