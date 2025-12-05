@@ -70,7 +70,7 @@ venv/
 
 #NGINX
 #Include NGINX config and lua files so that they are tracked by git
-!/services/nginx-gateway/conf.d/
-!/services/nginx-gateway/lua/
-!/services/nginx-gateway/includes/
-!/services/nginx-gateway/nginx.conf
+!services/nginx-gateway/conf.d/
+!services/nginx-gateway/lua/
+!services/nginx-gateway/includes/
+!services/nginx-gateway/nginx.conf
