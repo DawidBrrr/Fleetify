@@ -10,7 +10,7 @@ RUN opm get openresty/lua-resty-string
 RUN mkdir -p /etc/nginx/lua /etc/nginx/templates
 
 # Copy configuration
-COPY conf.d/app.conf /etc/nginx/conf.d/app.conf
+COPY conf.d/app.conf.template /etc/nginx/conf.d/app.conf.template
 COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
 
 # Copy includes (cors, proxy settings)
@@ -19,4 +19,4 @@ COPY includes/ /etc/nginx/includes/
 # Copy Lua scripts
 COPY lua/ /etc/nginx/lua/
 
-CMD ["openresty", "-g", "daemon off;"]
+CMD ["/bin/sh", "-c", "envsubst < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/app.conf && openresty -g 'daemon off;'"]
