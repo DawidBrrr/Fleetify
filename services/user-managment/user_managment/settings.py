@@ -74,14 +74,16 @@ WSGI_APPLICATION = 'user_managment.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import os
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'fleetify_core',
-        'USER': 'fleetify',
-        'PASSWORD': 'super_secret_db_password',
-        'HOST': 'db',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'user_management'),
+        'USER': os.environ.get('DB_USER', 'fleetify'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'super_secret_db_password'),
+        'HOST': os.environ.get('DB_HOST', 'user-management-db'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
