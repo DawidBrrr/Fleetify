@@ -1,0 +1,22 @@
+FROM openresty/openresty:1.25.3.1-alpine
+
+RUN apk add --no-cache bash gettext openssl perl curl
+
+# Install lua-resty-hmac
+RUN opm get jkeys089/lua-resty-hmac
+RUN opm get openresty/lua-resty-string
+
+# Create directories for Lua scripts and templates
+RUN mkdir -p /etc/nginx/lua /etc/nginx/templates
+
+# Copy configuration
+COPY conf.d/app.conf.template /etc/nginx/conf.d/app.conf.template
+COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
+
+# Copy includes (cors, proxy settings)
+COPY includes/ /etc/nginx/includes/
+
+# Copy Lua scripts
+COPY lua/ /etc/nginx/lua/
+
+CMD ["/bin/sh", "-c", "envsubst < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/app.conf && openresty -g 'daemon off;'"]

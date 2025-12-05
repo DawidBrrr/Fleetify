@@ -13,9 +13,9 @@ services:
 
   gateway:
     build:
-      context: ./services/api-gateway
+      context: ./services/nginx-gateway
     env_file:
-      - services/api-gateway/.env
+      - services/nginx-gateway/.env
     ports:
       - "8080:8080"
     
