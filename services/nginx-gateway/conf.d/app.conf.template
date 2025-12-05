@@ -19,7 +19,7 @@ server {
 
     # Frontend
     location / {
-        proxy_pass http://frontend:5173;
+        proxy_pass ${FRONTEND_URL};
         include /etc/nginx/includes/proxy.conf;
     }
 
@@ -34,7 +34,7 @@ server {
         }
         
         rewrite ^/api/(.*) /api/auth/$1 break;
-        proxy_pass http://user-management:8000;
+        proxy_pass ${USER_MANAGEMENT_URL};
     }
 
     # Catch-all for other API routes to prevent falling back to frontend
