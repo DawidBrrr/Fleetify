@@ -1,15 +1,20 @@
 version: "3.9"
 
 services:
-  db:
+  user-management-db:
     build:
-      context: ./database
+      context: ./databases/user-management
     env_file:
-      - database/.env
+      - services/user-managment/.env
     ports:
       - "5433:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - user-management-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleetify -d user_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   gateway:
     build:
@@ -18,6 +23,9 @@ services:
       - services/nginx-gateway/.env
     ports:
       - "8080:8080"
+    depends_on:
+      - user-management
+      - frontend
     
   user-management:
     build:
@@ -27,7 +35,8 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      user-management-db:
+        condition: service_healthy
     volumes:
       - ./services/user-managment:/app
 
@@ -42,9 +51,7 @@ services:
       - frontend/.env
     ports:
       - "5173:5173"
-    depends_on:
-      - gateway
 
 volumes:
   frontend_node_modules:
-  db_data:
+  user-management-data:
