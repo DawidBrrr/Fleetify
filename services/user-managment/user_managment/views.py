@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework import generics, permissions, response, status, views
 
 from .models import User, UserSession
-from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer
+from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer, UserInviteSerializer
 
 SESSION_TTL = timedelta(days=7)
 
@@ -93,3 +93,38 @@ class MeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class UserListView(generics.ListAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return User.objects.filter(role="employee")
+
+
+class InviteUserView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = UserInviteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Create user with default password "welcome123"
+        user = User.objects.create(
+            email=serializer.validated_data["email"],
+            full_name=serializer.validated_data["full_name"],
+            password_hash="temp_hash",
+            role="employee",
+            status="active"
+        )
+        
+        query = """
+            UPDATE users 
+            SET password_hash = crypt(%s, gen_salt('bf'))
+            WHERE id = %s
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(query, ["welcome123", user.id])
+            
+        return response.Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)

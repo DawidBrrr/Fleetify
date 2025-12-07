@@ -1,6 +1,8 @@
 import { useState } from "react";
 import AdminDashboard from "./AdminDashboard";
 import EmployeeDashboard from "./EmployeeDashboard";
+import VehiclesPage from "./VehiclesPage";
+import EmployeesPage from "./EmployeesPage";
 import logo from "../assets/logo.svg";
 
 const NAV_LINKS = [
@@ -18,20 +20,25 @@ export default function DashboardPage({ session, data, onLogout }) {
   const isAdmin = session.user.role === "admin";
 
   const renderContent = () => {
-    if (activeView === "dashboard") {
-      return isAdmin ? (
-        <AdminDashboard data={data} user={session.user} onLogout={onLogout} showLogoutButton={false} />
-      ) : (
-        <EmployeeDashboard data={data} user={session.user} onLogout={onLogout} showLogoutButton={false} />
-      );
+    switch (activeView) {
+      case "dashboard":
+        return isAdmin ? (
+          <AdminDashboard data={data} user={session.user} onLogout={onLogout} showLogoutButton={false} />
+        ) : (
+          <EmployeeDashboard data={data} user={session.user} onLogout={onLogout} showLogoutButton={false} />
+        );
+      case "vehicles":
+        return <VehiclesPage />;
+      case "employees":
+        return <EmployeesPage />;
+      default:
+        return (
+          <div className="p-5 text-center">
+            <h2 className="h4 text-muted">Widok "{NAV_LINKS.find(l => l.id === activeView)?.label}" jest w trakcie budowy</h2>
+            <p>Ta funkcjonalność zostanie dodana wkrótce.</p>
+          </div>
+        );
     }
-    
-    return (
-      <div className="p-5 text-center">
-        <h2 className="h4 text-muted">Widok "{NAV_LINKS.find(l => l.id === activeView)?.label}" jest w trakcie budowy</h2>
-        <p>Ta funkcjonalność zostanie dodana wkrótce.</p>
-      </div>
-    );
   };
 
   return (

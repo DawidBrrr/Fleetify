@@ -31,3 +31,37 @@ class UserAlert(Base):
     message = Column(Text, nullable=False)
     severity = Column(String(20), default='info')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class UserAssignment(Base):
+    __tablename__ = "user_assignments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(36), nullable=False)
+    vehicle_id = Column(String(50), nullable=False)
+    vehicle_model = Column(String(100))
+    vehicle_vin = Column(String(50))
+    vehicle_mileage = Column(String(50))
+    vehicle_battery = Column(Integer)
+    vehicle_tire_pressure = Column(String(20))
+    task_json = Column(Text) # Storing tasks as JSON string for simplicity
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class UserTrip(Base):
+    __tablename__ = "user_trips"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(36), nullable=False)
+    route = Column(String(200))
+    distance = Column(String(50))
+    cost = Column(String(50))
+    efficiency = Column(String(10))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class UserReminder(Base):
+    __tablename__ = "user_reminders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(36), nullable=False)
+    message = Column(Text, nullable=False)
+    severity = Column(String(20), default='info')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
