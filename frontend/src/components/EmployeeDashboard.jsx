@@ -47,41 +47,49 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
         <div className="col-12 col-xl-5">
           <div className="dashboard-panel h-100">
             <h3 className="h5 mb-3">Przydzielony pojazd</h3>
-            <div className="vehicle-card">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                  <p className="text-uppercase text-muted small mb-1">{data.assignment.vehicle.id}</p>
-                  <h4 className="h5 mb-0">{data.assignment.vehicle.model}</h4>
+            {data.assignment ? (
+              <div className="vehicle-card">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <p className="text-uppercase text-muted small mb-1">{data.assignment.vehicle.id}</p>
+                    <h4 className="h5 mb-0">{data.assignment.vehicle.model}</h4>
+                  </div>
+                  <span className="badge bg-dark">VIN: {data.assignment.vehicle.vin.slice(-6)}</span>
                 </div>
-                <span className="badge bg-dark">VIN: {data.assignment.vehicle.vin.slice(-6)}</span>
-              </div>
-              <div className="row g-3">
-                <div className="col-6">
-                  <p className="text-muted small mb-1">Przebieg</p>
-                  <h5>{data.assignment.vehicle.mileage}</h5>
-                </div>
-                <div className="col-6">
-                  <p className="text-muted small mb-1">Bateria</p>
-                  <div className="battery">
-                    <div className="battery__level" style={{ width: `${data.assignment.vehicle.battery}%` }}></div>
-                    <span>{data.assignment.vehicle.battery}%</span>
+                <div className="row g-3">
+                  <div className="col-6">
+                    <p className="text-muted small mb-1">Przebieg</p>
+                    <h5>{data.assignment.vehicle.mileage}</h5>
+                  </div>
+                  <div className="col-6">
+                    <p className="text-muted small mb-1">Bateria</p>
+                    <div className="battery">
+                      <div className="battery__level" style={{ width: `${data.assignment.vehicle.battery}%` }}></div>
+                      <span>{data.assignment.vehicle.battery}%</span>
+                    </div>
+                  </div>
+                  <div className="col-12">
+                    <p className="text-muted small mb-1">Ciśnienie opon</p>
+                    <div className="badge bg-success-subtle text-success">{data.assignment.vehicle.tirePressure}</div>
                   </div>
                 </div>
-                <div className="col-12">
-                  <p className="text-muted small mb-1">Ciśnienie opon</p>
-                  <div className="badge bg-success-subtle text-success">{data.assignment.vehicle.tirePressure}</div>
+                <hr className="my-4" />
+                <div>
+                  <p className="text-muted small mb-2">Dzisiejsze zadania</p>
+                  <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+                    {data.assignment.tasks.map((task) => (
+                      <TaskItem key={task.id} task={task} />
+                    ))}
+                  </ul>
                 </div>
               </div>
-              <hr className="my-4" />
-              <div>
-                <p className="text-muted small mb-2">Dzisiejsze zadania</p>
-                <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
-                  {data.assignment.tasks.map((task) => (
-                    <TaskItem key={task.id} task={task} />
-                  ))}
-                </ul>
+            ) : (
+              <div className="text-center py-5 text-muted">
+                <i className="bi bi-car-front display-4 mb-3 d-block"></i>
+                <p>Brak przydzielonego pojazdu.</p>
+                <small>Skontaktuj się z administratorem.</small>
               </div>
-            </div>
+            )}
           </div>
         </div>
         <div className="col-12 col-xl-7 d-flex flex-column gap-4">

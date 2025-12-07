@@ -30,6 +30,16 @@ class UserInvite(BaseModel):
     email: str
     full_name: str
 
+class AssignmentCreate(BaseModel):
+    user_id: str
+    vehicle_id: str
+    vehicle_model: str
+    vehicle_vin: str
+    vehicle_mileage: str
+    vehicle_battery: int
+    vehicle_tire_pressure: str
+    tasks: list[dict]
+
 @app.on_event("startup")
 async def startup_event():
     # Start RabbitMQ consumer in background thread
@@ -146,3 +156,7 @@ async def get_employees(authorization: str = Header(None)):
 @app.post("/dashboard/employees")
 async def invite_employee(invite: UserInvite, authorization: str = Header(None)):
     return await post_data(USER_MANAGEMENT_URL, "/api/users/invite", invite.dict(), authorization)
+
+@app.post("/dashboard/assignments")
+async def create_assignment(assignment: AssignmentCreate, authorization: str = Header(None)):
+    return await post_data(ANALYTICS_SERVICE_URL, "/analytics/admin/assignments", assignment.dict(), authorization)

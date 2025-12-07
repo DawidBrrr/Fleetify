@@ -1,18 +1,66 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
 import models
 from database import engine, get_db
 from deps import get_current_user
+import json
 
 # Create tables if they don't exist
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Analytics Service")
 
+class AssignmentCreate(BaseModel):
+    user_id: str
+    vehicle_id: str
+    vehicle_model: str
+    vehicle_vin: str
+    vehicle_mileage: str
+    vehicle_battery: int
+    vehicle_tire_pressure: str
+    tasks: List[Dict[str, Any]]
+
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "analytics-service"}
+
+@app.post("/analytics/admin/assignments")
+def create_assignment(
+    assignment: AssignmentCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    # Check if assignment exists for user
+    db_assignment = db.query(models.UserAssignment).filter(models.UserAssignment.user_id == assignment.user_id).first()
+    
+    if db_assignment:
+        # Update existing
+        db_assignment.vehicle_id = assignment.vehicle_id
+        db_assignment.vehicle_model = assignment.vehicle_model
+        db_assignment.vehicle_vin = assignment.vehicle_vin
+        db_assignment.vehicle_mileage = assignment.vehicle_mileage
+        db_assignment.vehicle_battery = assignment.vehicle_battery
+        db_assignment.vehicle_tire_pressure = assignment.vehicle_tire_pressure
+        db_assignment.task_json = json.dumps(assignment.tasks)
+    else:
+        # Create new
+        db_assignment = models.UserAssignment(
+            user_id=assignment.user_id,
+            vehicle_id=assignment.vehicle_id,
+            vehicle_model=assignment.vehicle_model,
+            vehicle_vin=assignment.vehicle_vin,
+            vehicle_mileage=assignment.vehicle_mileage,
+            vehicle_battery=assignment.vehicle_battery,
+            vehicle_tire_pressure=assignment.vehicle_tire_pressure,
+            task_json=json.dumps(assignment.tasks)
+        )
+        db.add(db_assignment)
+    
+    db.commit()
+    db.refresh(db_assignment)
+    return {"status": "success", "id": db_assignment.id}
 
 @app.get("/analytics/admin/stats")
 def get_admin_stats(
