@@ -84,6 +84,19 @@ export default function App() {
     setViewMode("landing");
   };
 
+  const handleRefresh = async () => {
+    if (session.status !== "authenticated" || !session.user) return;
+    
+    try {
+      const role = session.user.role === "employee" ? "employee" : "admin";
+      const dashboardResponse =
+        role === "employee" ? await dashboardApi.fetchEmployee() : await dashboardApi.fetchAdmin();
+      setDashboardData(dashboardResponse);
+    } catch (error) {
+      console.error("Failed to refresh dashboard data:", error);
+    }
+  };
+
   const openRegister = () => {
     setRegisterState({ loading: false, error: "" });
     setViewMode("register");
@@ -142,7 +155,7 @@ export default function App() {
       )}
 
       {showDashboard && (
-        <DashboardPage session={session} data={dashboardData} onLogout={handleLogout} />
+        <DashboardPage session={session} data={dashboardData} onLogout={handleLogout} onRefresh={handleRefresh} />
       )}
 
       {showRegister && (

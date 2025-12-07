@@ -11,7 +11,7 @@ function VehicleCard({ vehicle }) {
             <p className="text-muted small mb-0">{vehicle.year}</p>
           </div>
           <span className={`badge bg-${vehicle.status === 'available' ? 'success' : 'warning'}`}>
-            {vehicle.status}
+            {vehicle.status === 'available' ? 'Dostępny' : vehicle.status}
           </span>
         </div>
         <div className="mb-3">
@@ -19,10 +19,26 @@ function VehicleCard({ vehicle }) {
             <i className="bi bi-upc-scan me-2"></i>
             VIN: {vehicle.vin}
           </div>
-          <div className="d-flex align-items-center text-muted small">
+          <div className="d-flex align-items-center text-muted small mb-2">
             <i className="bi bi-card-text me-2"></i>
-            Plate: {vehicle.license_plate}
+            Rejestracja: {vehicle.license_plate}
           </div>
+          <div className="d-flex align-items-center text-muted small mb-2">
+            <i className="bi bi-speedometer2 me-2"></i>
+            {vehicle.odometer || 0} km
+          </div>
+          <div className="d-flex align-items-center text-muted small mb-2">
+            <i className={`bi bi-${vehicle.fuel_type === 'electric' ? 'battery-charging' : 'fuel-pump'} me-2`}></i>
+            {vehicle.fuel_type === 'electric' || vehicle.fuel_type === 'hybrid' 
+              ? `${vehicle.battery_level || 0}% Baterii` 
+              : `${vehicle.fuel_level || 0}% Paliwa`}
+          </div>
+          {vehicle.fuel_capacity && (
+             <div className="d-flex align-items-center text-muted small">
+             <i className="bi bi-droplet me-2"></i>
+             Pojemność: {vehicle.fuel_capacity}L
+           </div>
+          )}
         </div>
       </div>
     </div>
@@ -38,7 +54,10 @@ export default function VehiclesPage() {
     model: '',
     year: new Date().getFullYear(),
     vin: '',
-    license_plate: ''
+    license_plate: '',
+    fuel_type: 'gasoline',
+    odometer: 0,
+    fuel_capacity: ''
   });
 
   useEffect(() => {
@@ -66,12 +85,15 @@ export default function VehiclesPage() {
         model: '',
         year: new Date().getFullYear(),
         vin: '',
-        license_plate: ''
+        license_plate: '',
+        fuel_type: 'gasoline',
+        odometer: 0,
+        fuel_capacity: ''
       });
       loadVehicles();
     } catch (error) {
       console.error('Failed to add vehicle:', error);
-      alert('Failed to add vehicle');
+      alert('Nie udało się dodać pojazdu');
     }
   };
 
@@ -82,32 +104,32 @@ export default function VehiclesPage() {
     });
   };
 
-  if (loading) return <div className="p-5 text-center">Loading fleet...</div>;
+  if (loading) return <div className="p-5 text-center">Ładowanie floty...</div>;
 
   return (
     <div className="section-shell p-4 p-lg-5 dashboard-section">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="h3 mb-1">Fleet Vehicles</h2>
-          <p className="text-muted">Manage your fleet inventory</p>
+          <h2 className="h3 mb-1">Pojazdy Floty</h2>
+          <p className="text-muted">Zarządzaj inwentarzem floty</p>
         </div>
         <button 
           className="btn btn-primary"
           onClick={() => setShowForm(!showForm)}
         >
           <i className="bi bi-plus-lg me-2"></i>
-          Add Vehicle
+          Dodaj Pojazd
         </button>
       </div>
 
       {showForm && (
         <div className="card mb-4 border-0 shadow-sm bg-light">
           <div className="card-body p-4">
-            <h5 className="mb-3">Add New Vehicle</h5>
+            <h5 className="mb-3">Dodaj Nowy Pojazd</h5>
             <form onSubmit={handleSubmit}>
               <div className="row g-3">
                 <div className="col-md-6">
-                  <label className="form-label">Make</label>
+                  <label className="form-label">Marka</label>
                   <div className="input-group">
                     <span className="input-group-text"><i className="bi bi-car-front"></i></span>
                     <input
@@ -117,7 +139,7 @@ export default function VehiclesPage() {
                       value={formData.make}
                       onChange={handleChange}
                       required
-                      placeholder="e.g. Toyota"
+                      placeholder="np. Toyota"
                     />
                   </div>
                 </div>
@@ -130,11 +152,11 @@ export default function VehiclesPage() {
                     value={formData.model}
                     onChange={handleChange}
                     required
-                    placeholder="e.g. Camry"
+                    placeholder="np. Camry"
                   />
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label">Year</label>
+                  <label className="form-label">Rok</label>
                   <input
                     type="number"
                     className="form-control"
@@ -156,7 +178,7 @@ export default function VehiclesPage() {
                   />
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label">License Plate</label>
+                  <label className="form-label">Rejestracja</label>
                   <input
                     type="text"
                     className="form-control"
@@ -166,9 +188,73 @@ export default function VehiclesPage() {
                     required
                   />
                 </div>
+                <div className="col-md-4">
+                  <label className="form-label">Typ Paliwa</label>
+                  <select
+                    className="form-select"
+                    name="fuel_type"
+                    value={formData.fuel_type}
+                    onChange={handleChange}
+                  >
+                    <option value="gasoline">Benzyna</option>
+                    <option value="diesel">Diesel</option>
+                    <option value="electric">Elektryczny</option>
+                    <option value="hybrid">Hybryda</option>
+                  </select>
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label">Przebieg (km)</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    name="odometer"
+                    value={formData.odometer}
+                    onChange={handleChange}
+                    min="0"
+                  />
+                </div>
+                {(formData.fuel_type === 'electric' || formData.fuel_type === 'hybrid') && (
+                  <div className="col-md-4">
+                    <label className="form-label">Poziom Baterii (%)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      name="battery_level"
+                      value={formData.battery_level || ''}
+                      onChange={handleChange}
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                )}
+                {(formData.fuel_type !== 'electric') && (
+                  <div className="col-md-4">
+                    <label className="form-label">Poziom Paliwa (%)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      name="fuel_level"
+                      value={formData.fuel_level || ''}
+                      onChange={handleChange}
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                )}
+                <div className="col-md-4">
+                  <label className="form-label">Pojemność Baku (L)</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    name="fuel_capacity"
+                    value={formData.fuel_capacity || ''}
+                    onChange={handleChange}
+                    min="0"
+                  />
+                </div>
                 <div className="col-12 text-end">
-                  <button type="button" className="btn btn-link text-muted me-2" onClick={() => setShowForm(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-success">Save Vehicle</button>
+                  <button type="button" className="btn btn-link text-muted me-2" onClick={() => setShowForm(false)}>Anuluj</button>
+                  <button type="submit" className="btn btn-success">Zapisz Pojazd</button>
                 </div>
               </div>
             </form>
@@ -185,7 +271,7 @@ export default function VehiclesPage() {
         {vehicles.length === 0 && (
           <div className="col-12 text-center py-5 text-muted">
             <i className="bi bi-truck display-4 mb-3 d-block"></i>
-            No vehicles in fleet yet.
+            Brak pojazdów we flocie.
           </div>
         )}
       </div>
