@@ -24,14 +24,14 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
       <div className="dashboard-header mb-4">
         <div>
           <p className="text-uppercase text-muted small mb-1">Panel pracownika</p>
-          <h2 className="h3 mb-1">Hej {user.name.split(" ")[0]}, oto Twój dzień</h2>
+          <h2 className="h3 mb-1">Hej {(user.full_name || user.name || "").split(" ")[0]}, oto Twój dzień</h2>
           <span className="text-muted">Przydzielony pojazd oraz zadania</span>
         </div>
         <div className="d-flex align-items-center gap-3 flex-wrap">
           <div className="d-flex align-items-center gap-2">
-            <img src={user.avatar} alt={user.name} className="avatar" />
+            {user.avatar && <img src={user.avatar} alt={user.full_name || user.name} className="avatar" />}
             <div className="small text-muted">
-              <div>{user.name}</div>
+              <div>{user.full_name || user.name}</div>
               <div>Rola: kierowca</div>
             </div>
           </div>
