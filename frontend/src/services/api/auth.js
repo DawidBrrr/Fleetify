@@ -45,4 +45,12 @@ export const authApi = {
 		});
 		return handleResponse(response, "Logout failed");
 	},
+
+	getCurrentUser: async () => {
+		const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+			method: "GET",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to fetch user");
+	},
 };

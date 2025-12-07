@@ -40,6 +40,14 @@ class AssignmentCreate(BaseModel):
     vehicle_tire_pressure: str
     tasks: list[dict]
 
+class TaskUpdate(BaseModel):
+    task_id: int
+    status: str
+
+class VehicleUpdate(BaseModel):
+    mileage: str
+    battery: int
+
 @app.on_event("startup")
 async def startup_event():
     # Start RabbitMQ consumer in background thread
@@ -160,3 +168,15 @@ async def invite_employee(invite: UserInvite, authorization: str = Header(None))
 @app.post("/dashboard/assignments")
 async def create_assignment(assignment: AssignmentCreate, authorization: str = Header(None)):
     return await post_data(ANALYTICS_SERVICE_URL, "/analytics/admin/assignments", assignment.dict(), authorization)
+
+@app.post("/dashboard/employee/tasks/update")
+async def update_task_status(update: TaskUpdate, authorization: str = Header(None)):
+    return await post_data(ANALYTICS_SERVICE_URL, "/analytics/employee/tasks/update", update.dict(), authorization)
+
+@app.post("/dashboard/employee/vehicle/return")
+async def return_vehicle(authorization: str = Header(None)):
+    return await post_data(ANALYTICS_SERVICE_URL, "/analytics/employee/vehicle/return", {}, authorization)
+
+@app.post("/dashboard/employee/vehicle/update")
+async def update_vehicle_status(update: VehicleUpdate, authorization: str = Header(None)):
+    return await post_data(ANALYTICS_SERVICE_URL, "/analytics/employee/vehicle/update", update.dict(), authorization)

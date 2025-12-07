@@ -72,10 +72,7 @@ class UserInviteSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=255)
     
     def validate_email(self, value: str) -> str:
-        normalized = value.lower()
-        if User.objects.filter(email=normalized).exists():
-            raise serializers.ValidationError("A user with this email already exists.")
-        return normalized
+        return value.lower()
 
     def create(self, validated_data):
         password = validated_data.pop("password")

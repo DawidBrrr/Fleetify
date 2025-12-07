@@ -86,4 +86,31 @@ export const dashboardApi = {
 		});
 		return handleResponse(response, "Failed to assign task");
 	},
+
+	updateTaskStatus: async (data) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/employee/tasks/update`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(data),
+		});
+		return handleResponse(response, "Failed to update task status");
+	},
+
+	returnVehicle: async () => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/employee/vehicle/return`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify({}),
+		});
+		return handleResponse(response, "Failed to return vehicle");
+	},
+
+	updateVehicleStatus: async (data) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/employee/vehicle/update`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(data),
+		});
+		return handleResponse(response, "Failed to update vehicle status");
+	},
 };
