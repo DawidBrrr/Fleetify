@@ -13,11 +13,19 @@ const NAV_LINKS = [
   { id: "integrations", label: "Integracje", icon: "🔗" }
 ];
 
-export default function DashboardPage({ session, data, onLogout }) {
+export default function DashboardPage({ session, data, onLogout, onRefresh }) {
   const [activeView, setActiveView] = useState("dashboard");
 
   if (!session?.user || !data) return null;
   const isAdmin = session.user.role === "admin";
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      window.location.reload();
+    }
+  };
 
   const renderContent = () => {
     switch (activeView) {
@@ -48,7 +56,7 @@ export default function DashboardPage({ session, data, onLogout }) {
           <img src={logo} alt="Fleetify" width="36" height="36" />
           <div>
             <p className="mb-0 fw-semibold">Fleetify</p>
-            <small className="text-muted">Control Center</small>
+            <small className="text-muted">Centrum Sterowania</small>
           </div>
         </div>
         <nav className="d-flex flex-column gap-2 flex-grow-1">
@@ -67,6 +75,9 @@ export default function DashboardPage({ session, data, onLogout }) {
           ))}
         </nav>
         <div className="sidebar-footer mt-4">
+          <button className="btn btn-sm btn-outline-light w-100 mb-3" onClick={handleRefresh}>
+            <i className="bi bi-arrow-clockwise me-2"></i> Odśwież
+          </button>
           <p className="small text-muted mb-1">Zalogowano jako</p>
           <p className="fw-semibold mb-1">{session.user.full_name || session.user.name}</p>
           <p className="text-muted small mb-3">{session.user.email}</p>

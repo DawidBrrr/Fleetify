@@ -12,12 +12,19 @@ ANALYTICS_SERVICE_URL = os.getenv("ANALYTICS_SERVICE_URL", "http://analytics-ser
 VEHICLE_SERVICE_URL = os.getenv("VEHICLE_SERVICE_URL", "http://vehicle-service:8000")
 USER_MANAGEMENT_URL = os.getenv("USER_MANAGEMENT_URL", "http://user-management:8000")
 
+from typing import Optional
+
 class VehicleCreate(BaseModel):
     vin: str
     make: str
     model: str
     year: int
     license_plate: str
+    fuel_type: Optional[str] = "gasoline"
+    fuel_level: Optional[int] = 100
+    battery_level: Optional[int] = None
+    odometer: Optional[int] = 0
+    fuel_capacity: Optional[float] = None
 
 class UserInvite(BaseModel):
     email: str
@@ -72,7 +79,24 @@ async def get_admin_dashboard(authorization: str = Header(None)):
     stats = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/stats", authorization)
     costs = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/costs", authorization)
     alerts = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/alerts", authorization)
-    fleet_health = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/fleet-health", authorization)
+    
+    # Fetch real vehicles from Vehicle Service instead of Analytics Service mock
+    try:
+        vehicles = await fetch_data(VEHICLE_SERVICE_URL, "/vehicles/", authorization)
+        # Transform vehicle data to match fleet health format if needed
+        fleet_health = []
+        for v in vehicles:
+            fleet_health.append({
+                "id": v["id"],
+                "model": f"{v['make']} {v['model']}",
+                "status": v["status"],
+                "location": "Unknown", # Location not yet tracked
+                "battery": v.get("battery_level", 0) if v.get("fuel_type") in ["electric", "hybrid"] else v.get("fuel_level", 0),
+                "fuel_type": v.get("fuel_type", "gasoline")
+            })
+    except Exception as e:
+        print(f"Failed to fetch vehicles for fleet health: {e}")
+        fleet_health = []
 
     return {
         "stats": stats,
