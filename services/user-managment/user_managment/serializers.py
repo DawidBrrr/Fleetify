@@ -49,6 +49,35 @@ class RegistrationSerializer(serializers.Serializer):
         return normalized
 
     def create(self, validated_data):
+        email = validated_data['email']
+        full_name = validated_data['full_name']
+        password = validated_data['password']
+        role = validated_data['role']
+        
+        query = """
+            INSERT INTO users (id, email, full_name, password_hash, role, status, created_at, updated_at)
+            VALUES (gen_random_uuid(), %s, %s, crypt(%s, gen_salt('bf')), %s, 'active', NOW(), NOW())
+            RETURNING id
+        """
+        
+        with connection.cursor() as cursor:
+            cursor.execute(query, [email, full_name, password, role])
+            row = cursor.fetchone()
+            user_id = row[0]
+            
+        return User.objects.get(id=user_id)
+
+class UserInviteSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    full_name = serializers.CharField(max_length=255)
+    
+    def validate_email(self, value: str) -> str:
+        normalized = value.lower()
+        if User.objects.filter(email=normalized).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return normalized
+
+    def create(self, validated_data):
         password = validated_data.pop("password")
         now = timezone.now()
         user_id = uuid.uuid4()

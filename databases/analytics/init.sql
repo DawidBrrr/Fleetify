@@ -25,6 +25,37 @@ CREATE TABLE user_alerts (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE user_assignments (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    vehicle_id VARCHAR(50) NOT NULL,
+    vehicle_model VARCHAR(100),
+    vehicle_vin VARCHAR(50),
+    vehicle_mileage VARCHAR(50),
+    vehicle_battery INTEGER,
+    vehicle_tire_pressure VARCHAR(20),
+    task_json TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_trips (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    route VARCHAR(200),
+    distance VARCHAR(50),
+    cost VARCHAR(50),
+    efficiency VARCHAR(10),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_reminders (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    message TEXT NOT NULL,
+    severity VARCHAR(20) DEFAULT 'info',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Seed data for admin (ID 1)
 -- Note: Since we switched to UUIDs, these integer IDs won't match real users.
 -- They are placeholders. Real users will have empty dashboards initially.

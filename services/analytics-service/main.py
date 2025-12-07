@@ -50,33 +50,45 @@ def get_fleet_health(current_user: dict = Depends(get_current_user)):
         {"id": "V-002", "model": "Ford Focus", "status": "Maintenance", "location": "Garage", "battery": 0}
     ]
 
+import json
+
 @app.get("/analytics/employee/assignment")
-def get_employee_assignment(current_user: dict = Depends(get_current_user)):
+def get_employee_assignment(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user['id']
+    assignment = db.query(models.UserAssignment).filter(models.UserAssignment.user_id == user_id).first()
+    
+    if not assignment:
+        return None # Or empty object depending on frontend expectation
+
     return {
         "vehicle": {
-            "id": "V-001",
-            "model": "Toyota Camry",
-            "vin": "ABC1234567890",
-            "mileage": "12,500 km",
-            "battery": 85,
-            "tirePressure": "OK"
+            "id": assignment.vehicle_id,
+            "model": assignment.vehicle_model,
+            "vin": assignment.vehicle_vin,
+            "mileage": assignment.vehicle_mileage,
+            "battery": assignment.vehicle_battery,
+            "tirePressure": assignment.vehicle_tire_pressure
         },
-        "tasks": [
-            {"id": 101, "label": "Deliver package to Client A"},
-            {"id": 102, "label": "Pick up supplies from Warehouse B"}
-        ]
+        "tasks": json.loads(assignment.task_json) if assignment.task_json else []
     }
 
 @app.get("/analytics/employee/trips")
-def get_employee_trips(current_user: dict = Depends(get_current_user)):
-    return [
-        {"id": 1, "route": "Warsaw - Krakow", "distance": "300 km", "cost": "150 PLN", "efficiency": "95%"},
-        {"id": 2, "route": "Krakow - Warsaw", "distance": "300 km", "cost": "145 PLN", "efficiency": "98%"}
-    ]
+def get_employee_trips(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user['id']
+    trips = db.query(models.UserTrip).filter(models.UserTrip.user_id == user_id).all()
+    return trips
 
 @app.get("/analytics/employee/reminders")
-def get_employee_reminders(current_user: dict = Depends(get_current_user)):
-    return [
-        {"id": 1, "message": "Check tire pressure", "severity": "info"},
-        {"id": 2, "message": "Renew insurance", "severity": "warning"}
-    ]
+def get_employee_reminders(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user['id']
+    reminders = db.query(models.UserReminder).filter(models.UserReminder.user_id == user_id).all()
+    return reminders
