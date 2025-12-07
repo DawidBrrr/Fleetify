@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import FeatureGrid from "./components/FeatureGrid";
@@ -18,6 +18,32 @@ export default function App() {
   const [loginState, setLoginState] = useState({ loading: false, error: "" });
   const [registerState, setRegisterState] = useState({ loading: false, error: "" });
   const [viewMode, setViewMode] = useState("landing"); // landing | register | transition | dashboard
+  const [initializing, setInitializing] = useState(true);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setInitializing(false);
+        return;
+      }
+
+      try {
+        const user = await authApi.getCurrentUser();
+        // Reuse the login logic but skip the token setting since it's already there
+        // However, startAuthenticatedSession sets it again which is fine.
+        await startAuthenticatedSession({ token, user });
+      } catch (error) {
+        console.error("Session restore failed:", error);
+        localStorage.removeItem("token");
+        setSession({ status: "loggedOut" });
+      } finally {
+        setInitializing(false);
+      }
+    };
+
+    restoreSession();
+  }, []);
 
   const startAuthenticatedSession = async (authPayload) => {
     const role = authPayload.user.role === "employee" ? "employee" : "admin";
@@ -59,7 +85,15 @@ export default function App() {
       await startAuthenticatedSession(registerData);
       setRegisterState({ loading: false, error: "" });
     } catch (error) {
+      // If registration succeeded but dashboard fetch failed, we might be in "transition" mode
+      // We need to ensure we go back to register view and clean up session if needed
+      if (localStorage.getItem("token")) {
+        localStorage.removeItem("token");
+        setSession({ status: "loggedOut" });
+        setDashboardData(null);
+      }
       setRegisterState({ loading: false, error: error.message || "Nie udało się utworzyć konta" });
+      setViewMode("register");
     }
   };
 
@@ -76,6 +110,19 @@ export default function App() {
     setViewMode("landing");
   };
 
+  const handleRefresh = async () => {
+    if (session.status !== "authenticated" || !session.user) return;
+    
+    try {
+      const role = session.user.role === "employee" ? "employee" : "admin";
+      const dashboardResponse =
+        role === "employee" ? await dashboardApi.fetchEmployee() : await dashboardApi.fetchAdmin();
+      setDashboardData(dashboardResponse);
+    } catch (error) {
+      console.error("Failed to refresh dashboard data:", error);
+    }
+  };
+
   const openRegister = () => {
     setRegisterState({ loading: false, error: "" });
     setViewMode("register");
@@ -88,7 +135,17 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const showLanding = viewMode !== "dashboard" && viewMode !== "register";
+  if (initializing) {
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100 bg-fleet-ice">
+        <div className="spinner-border text-fleet-navy" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const showLanding = viewMode === "landing";
   const showRegister = viewMode === "register";
   const showDashboard = viewMode === "dashboard" && session.status === "authenticated" && dashboardData;
 
@@ -134,7 +191,7 @@ export default function App() {
       )}
 
       {showDashboard && (
-        <DashboardPage session={session} data={dashboardData} onLogout={handleLogout} />
+        <DashboardPage session={session} data={dashboardData} onLogout={handleLogout} onRefresh={handleRefresh} />
       )}
 
       {showRegister && (

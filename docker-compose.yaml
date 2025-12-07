@@ -52,6 +52,100 @@ services:
     ports:
       - "5173:5173"
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  vehicle-db:
+    build:
+      context: ./databases/vehicle
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: vehicle_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - vehicle-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d vehicle_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  vehicle-service:
+    build:
+      context: ./services/vehicle-service
+    environment:
+      DATABASE_URL: postgresql://user:password@vehicle-db:5432/vehicle_db
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+    ports:
+      - "8001:8000"
+    depends_on:
+      vehicle-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    volumes:
+      - ./services/vehicle-service:/app
+
+  dashboard-service:
+    build:
+      context: ./services/dashboard-service
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      ANALYTICS_SERVICE_URL: http://analytics-service:8000
+    ports:
+      - "8002:8000"
+    depends_on:
+      rabbitmq:
+        condition: service_started
+      analytics-service:
+        condition: service_started
+    volumes:
+      - ./services/dashboard-service:/app
+
+  analytics-db:
+    build:
+      context: ./databases/analytics
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: analytics_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - analytics-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d analytics_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+    environment:
+      DATABASE_URL: postgresql://user:password@analytics-db:5432/analytics_db
+    ports:
+      - "8003:8000"
+    depends_on:
+      analytics-db:
+        condition: service_healthy
+    volumes:
+      - ./services/analytics-service:/app
+
 volumes:
   frontend_node_modules:
   user-management-data:
+  vehicle-db-data:
+  analytics-db-data:
