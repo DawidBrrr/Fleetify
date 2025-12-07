@@ -77,4 +77,13 @@ export const dashboardApi = {
 		});
 		return handleResponse(response, "Failed to invite employee");
 	},
+
+	assignTask: async (assignmentData) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/assignments`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(assignmentData),
+		});
+		return handleResponse(response, "Failed to assign task");
+	},
 };
