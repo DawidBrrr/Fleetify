@@ -100,7 +100,8 @@ class UserListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return User.objects.filter(role="employee")
+        # Only show employees managed by the current admin
+        return User.objects.filter(role="employee", manager_id=self.request.user.id)
 
 
 class InviteUserView(views.APIView):
@@ -110,13 +111,32 @@ class InviteUserView(views.APIView):
         serializer = UserInviteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        # Create user with default password "welcome123"
+        email = serializer.validated_data["email"]
+        full_name = serializer.validated_data["full_name"]
+        
+        # Check if user exists
+        existing_user = User.objects.filter(email=email).first()
+        
+        if existing_user:
+            if existing_user.manager_id:
+                return response.Response(
+                    {"detail": "User is already part of another team."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Claim the user
+            existing_user.manager_id = request.user.id
+            existing_user.save()
+            return response.Response(UserSerializer(existing_user).data, status=status.HTTP_200_OK)
+
+        # Create user with default password "welcome123" and link to manager
         user = User.objects.create(
-            email=serializer.validated_data["email"],
-            full_name=serializer.validated_data["full_name"],
+            email=email,
+            full_name=full_name,
             password_hash="temp_hash",
             role="employee",
-            status="active"
+            status="active",
+            manager_id=request.user.id
         )
         
         query = """

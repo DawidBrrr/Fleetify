@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     full_name       TEXT NOT NULL,
     role            TEXT NOT NULL CHECK (role IN ('admin', 'employee')),
     status          TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled', 'pending')),
+    manager_id      UUID REFERENCES users(id),
     last_login_at   TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()

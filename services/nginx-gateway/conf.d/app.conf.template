@@ -37,6 +37,13 @@ server {
         proxy_pass ${USER_MANAGEMENT_URL};
     }
 
+    # User Management Service
+    location /api/users {
+        include /etc/nginx/includes/cors.conf;
+        include /etc/nginx/includes/proxy.conf;
+        proxy_pass ${USER_MANAGEMENT_URL};
+    }
+
     # Vehicle Service
     location /api/vehicles {
         include /etc/nginx/includes/cors.conf;

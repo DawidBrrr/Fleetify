@@ -22,6 +22,14 @@ class AssignmentCreate(BaseModel):
     vehicle_tire_pressure: str
     tasks: List[Dict[str, Any]]
 
+class TaskUpdate(BaseModel):
+    task_id: int
+    status: str
+
+class VehicleUpdate(BaseModel):
+    mileage: str
+    battery: int
+
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "analytics-service"}
@@ -140,3 +148,54 @@ def get_employee_reminders(
     user_id = current_user['id']
     reminders = db.query(models.UserReminder).filter(models.UserReminder.user_id == user_id).all()
     return reminders
+
+@app.post("/analytics/employee/tasks/update")
+def update_task_status(
+    update: TaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user['id']
+    assignment = db.query(models.UserAssignment).filter(models.UserAssignment.user_id == user_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    tasks = json.loads(assignment.task_json)
+    for task in tasks:
+        if task['id'] == update.task_id:
+            task['status'] = update.status
+            break
+    
+    assignment.task_json = json.dumps(tasks)
+    db.commit()
+    return {"status": "success"}
+
+@app.post("/analytics/employee/vehicle/return")
+def return_vehicle(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user['id']
+    assignment = db.query(models.UserAssignment).filter(models.UserAssignment.user_id == user_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    db.delete(assignment)
+    db.commit()
+    return {"status": "success"}
+
+@app.post("/analytics/employee/vehicle/update")
+def update_vehicle_status(
+    update: VehicleUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user['id']
+    assignment = db.query(models.UserAssignment).filter(models.UserAssignment.user_id == user_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    assignment.vehicle_mileage = update.mileage
+    assignment.vehicle_battery = update.battery
+    db.commit()
+    return {"status": "success"}

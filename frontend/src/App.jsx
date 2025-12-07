@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import FeatureGrid from "./components/FeatureGrid";
@@ -18,6 +18,26 @@ export default function App() {
   const [loginState, setLoginState] = useState({ loading: false, error: "" });
   const [registerState, setRegisterState] = useState({ loading: false, error: "" });
   const [viewMode, setViewMode] = useState("landing"); // landing | register | transition | dashboard
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const user = await authApi.getCurrentUser();
+        // Reuse the login logic but skip the token setting since it's already there
+        // However, startAuthenticatedSession sets it again which is fine.
+        await startAuthenticatedSession({ token, user });
+      } catch (error) {
+        console.error("Session restore failed:", error);
+        localStorage.removeItem("token");
+        setSession({ status: "loggedOut" });
+      }
+    };
+
+    restoreSession();
+  }, []);
 
   const startAuthenticatedSession = async (authPayload) => {
     const role = authPayload.user.role === "employee" ? "employee" : "admin";
