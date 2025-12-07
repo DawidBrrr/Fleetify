@@ -9,18 +9,22 @@ const handleResponse = async (response, errorMessage) => {
 
 export const authApi = {
 	login: async (credentials) => {
+		const headers = getDefaultHeaders();
+		delete headers.Authorization;
 		const response = await fetch(`${API_BASE_URL}/api/login`, {
 			method: "POST",
-			headers: getDefaultHeaders(),
+			headers: headers,
 			body: JSON.stringify(credentials),
 		});
 		return handleResponse(response, "Login failed");
 	},
 
 	register: async (payload) => {
+		const headers = getDefaultHeaders();
+		delete headers.Authorization;
 		const response = await fetch(`${API_BASE_URL}/api/register`, {
 			method: "POST",
-			headers: getDefaultHeaders(),
+			headers: headers,
 			body: JSON.stringify(payload),
 		});
 		return handleResponse(response, "Registration failed");

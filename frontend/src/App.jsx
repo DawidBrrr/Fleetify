@@ -59,7 +59,15 @@ export default function App() {
       await startAuthenticatedSession(registerData);
       setRegisterState({ loading: false, error: "" });
     } catch (error) {
+      // If registration succeeded but dashboard fetch failed, we might be in "transition" mode
+      // We need to ensure we go back to register view and clean up session if needed
+      if (localStorage.getItem("token")) {
+        localStorage.removeItem("token");
+        setSession({ status: "loggedOut" });
+        setDashboardData(null);
+      }
       setRegisterState({ loading: false, error: error.message || "Nie udało się utworzyć konta" });
+      setViewMode("register");
     }
   };
 
