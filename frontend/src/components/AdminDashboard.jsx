@@ -11,15 +11,37 @@ function StatCard({ label, value, delta, tone = "info" }) {
 }
 
 function FleetRow({ item }) {
+  const statusMap = {
+    'available': 'Dostępny',
+    'in_use': 'W użyciu',
+    'maintenance': 'W serwisie'
+  };
+  const statusLabel = statusMap[item.status] || item.status;
+  const statusClass = item.status === 'available' ? 'success' : (item.status === 'maintenance' ? 'danger' : 'warning');
+
   return (
     <tr>
       <td className="fw-semibold">{item.id}</td>
       <td>{item.model}</td>
       <td>
-        <span className={`badge fleet-status fleet-status--${item.status.toLowerCase()}`}>{item.status}</span>
+        <span className={`badge bg-${statusClass}`}>{statusLabel}</span>
       </td>
       <td>{item.location}</td>
-      <td>{item.battery ? `${item.battery}%` : "—"}</td>
+      <td>
+        {item.battery !== undefined ? (
+          <div className="d-flex align-items-center gap-2">
+            <div className="progress flex-grow-1" style={{ height: "6px", width: "60px" }}>
+              <div 
+                className={`progress-bar bg-${item.battery > 20 ? 'success' : 'danger'}`} 
+                role="progressbar" 
+                style={{ width: `${item.battery}%` }}
+              ></div>
+            </div>
+            <span className="small">{item.battery}%</span>
+            <span className="text-muted small" style={{fontSize: '0.7em'}}>({item.fuel_type === 'electric' ? 'EV' : (item.fuel_type === 'hybrid' ? 'HEV' : 'ICE')})</span>
+          </div>
+        ) : "—"}
+      </td>
     </tr>
   );
 }
@@ -44,14 +66,14 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
       <div className="dashboard-header mb-4">
         <div>
           <p className="text-uppercase text-muted small mb-1">Panel administratora floty</p>
-          <h2 className="h3 mb-1">Cześć {user.name.split(" ")[0]}, oto dzisiejsze kluczowe liczby</h2>
+          <h2 className="h3 mb-1">Cześć {(user.full_name || user.name || "").split(" ")[0]}, oto dzisiejsze kluczowe liczby</h2>
           <span className="text-muted">{user.email}</span>
         </div>
         <div className="d-flex align-items-center gap-3 flex-wrap">
           <div className="d-flex align-items-center gap-2">
-            <img src={user.avatar} alt={user.name} className="avatar" />
+            {user.avatar && <img src={user.avatar} alt={user.full_name || user.name} className="avatar" />}
             <div className="small text-muted">
-              <div>{user.name}</div>
+              <div>{user.full_name || user.name}</div>
               <div>Rola: administrator</div>
             </div>
           </div>

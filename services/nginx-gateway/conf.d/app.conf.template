@@ -37,6 +37,33 @@ server {
         proxy_pass ${USER_MANAGEMENT_URL};
     }
 
+    # User Management Service
+    location /api/users {
+        include /etc/nginx/includes/cors.conf;
+        include /etc/nginx/includes/proxy.conf;
+        proxy_pass ${USER_MANAGEMENT_URL};
+    }
+
+    # Vehicle Service
+    location /api/vehicles {
+        include /etc/nginx/includes/cors.conf;
+        include /etc/nginx/includes/proxy.conf;
+        
+        rewrite ^/api/vehicles/(.*) /vehicles/$1 break;
+        rewrite ^/api/vehicles /vehicles/ break;
+        proxy_pass ${VEHICLE_SERVICE_URL};
+    }
+
+    # Dashboard Service
+    location /api/dashboard {
+        include /etc/nginx/includes/cors.conf;
+        include /etc/nginx/includes/proxy.conf;
+        
+        rewrite ^/api/dashboard/(.*) /dashboard/$1 break;
+        rewrite ^/api/dashboard /dashboard/ break;
+        proxy_pass ${DASHBOARD_SERVICE_URL};
+    }
+
     # Catch-all for other API routes to prevent falling back to frontend
     location /api/ {
         default_type application/json;
