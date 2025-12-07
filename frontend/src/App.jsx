@@ -18,11 +18,15 @@ export default function App() {
   const [loginState, setLoginState] = useState({ loading: false, error: "" });
   const [registerState, setRegisterState] = useState({ loading: false, error: "" });
   const [viewMode, setViewMode] = useState("landing"); // landing | register | transition | dashboard
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     const restoreSession = async () => {
       const token = localStorage.getItem("token");
-      if (!token) return;
+      if (!token) {
+        setInitializing(false);
+        return;
+      }
 
       try {
         const user = await authApi.getCurrentUser();
@@ -33,6 +37,8 @@ export default function App() {
         console.error("Session restore failed:", error);
         localStorage.removeItem("token");
         setSession({ status: "loggedOut" });
+      } finally {
+        setInitializing(false);
       }
     };
 
@@ -129,7 +135,17 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const showLanding = viewMode !== "dashboard" && viewMode !== "register";
+  if (initializing) {
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100 bg-fleet-ice">
+        <div className="spinner-border text-fleet-navy" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const showLanding = viewMode === "landing";
   const showRegister = viewMode === "register";
   const showDashboard = viewMode === "dashboard" && session.status === "authenticated" && dashboardData;
 
