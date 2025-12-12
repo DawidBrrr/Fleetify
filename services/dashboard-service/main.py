@@ -3,18 +3,20 @@ from pydantic import BaseModel
 import asyncio
 import httpx
 import threading
+from typing import Optional
+
 from app.messaging import consume_messages
 
 from config import (
     ANALYTICS_SERVICE_URL,
     VEHICLE_SERVICE_URL,
     USER_MANAGEMENT_URL,
+    NOTIFICATIONS_SERVICE_URL,
+    NOTIFICATIONS_SERVICE_TOKEN,
 )
 
 app = FastAPI(title="Dashboard Service")
 
-
-from typing import Optional
 
 class VehicleCreate(BaseModel):
     vin: str
@@ -50,6 +52,10 @@ class VehicleUpdate(BaseModel):
     mileage: str
     battery: int
 
+
+class NotificationResponse(BaseModel):
+    action: str
+
 @app.on_event("startup")
 async def startup_event():
     # Start RabbitMQ consumer in background thread
@@ -65,7 +71,7 @@ async def fetch_data(url: str, endpoint: str, authorization: str = None):
     if authorization:
         headers["Authorization"] = authorization
         
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
             response = await client.get(f"{url}{endpoint}", headers=headers)
             response.raise_for_status()
@@ -82,7 +88,7 @@ async def post_data(url: str, endpoint: str, data: dict, authorization: str = No
     if authorization:
         headers["Authorization"] = authorization
         
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
             response = await client.post(f"{url}{endpoint}", json=data, headers=headers)
             response.raise_for_status()
@@ -93,6 +99,20 @@ async def post_data(url: str, endpoint: str, data: dict, authorization: str = No
         except httpx.HTTPStatusError as exc:
             print(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}.")
             raise HTTPException(status_code=exc.response.status_code, detail="Error posting data")
+
+
+async def send_service_notification(payload: dict):
+    if not NOTIFICATIONS_SERVICE_TOKEN:
+        return
+    headers = {
+        "X-Service-Token": NOTIFICATIONS_SERVICE_TOKEN,
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(f"{NOTIFICATIONS_SERVICE_URL}/notifications", json=payload, headers=headers)
+        except httpx.RequestError as exc:
+            print(f"Notification service error: {exc}")
 
 @app.get("/dashboard/admin")
 async def get_admin_dashboard(authorization: str = Header(None)):
@@ -168,13 +188,59 @@ async def get_employees(authorization: str = Header(None)):
 async def get_team(authorization: str = Header(None)):
     return await fetch_data(USER_MANAGEMENT_URL, "/api/users/team", authorization)
 
+
+@app.get("/dashboard/notifications")
+async def list_notifications(authorization: str = Header(None)):
+    return await fetch_data(NOTIFICATIONS_SERVICE_URL, "/notifications", authorization)
+
+
+@app.post("/dashboard/notifications/{notification_id}/ack")
+async def acknowledge_notification(notification_id: str, authorization: str = Header(None)):
+    return await post_data(
+        NOTIFICATIONS_SERVICE_URL,
+        f"/notifications/{notification_id}/ack",
+        {},
+        authorization,
+    )
+
+
+@app.post("/dashboard/notifications/{notification_id}/respond")
+async def respond_notification(notification_id: str, payload: NotificationResponse, authorization: str = Header(None)):
+    return await post_data(
+        NOTIFICATIONS_SERVICE_URL,
+        f"/notifications/{notification_id}/respond",
+        payload.dict(),
+        authorization,
+    )
+
 @app.post("/dashboard/employees")
 async def invite_employee(invite: UserInvite, authorization: str = Header(None)):
     return await post_data(USER_MANAGEMENT_URL, "/api/users/invite", invite.dict(), authorization)
 
 @app.post("/dashboard/assignments")
 async def create_assignment(assignment: AssignmentCreate, authorization: str = Header(None)):
-    return await post_data(ANALYTICS_SERVICE_URL, "/analytics/admin/assignments", assignment.dict(), authorization)
+    result = await post_data(ANALYTICS_SERVICE_URL, "/analytics/admin/assignments", assignment.dict(), authorization)
+    try:
+        current_user = await fetch_data(USER_MANAGEMENT_URL, "/api/users/me", authorization)
+        await send_service_notification(
+            {
+                "recipient_id": assignment.user_id,
+                "sender_id": current_user.get("id"),
+                "type": "task_assignment",
+                "title": "Przydzielono nowe zadania",
+                "body": f"{current_user.get('full_name')} przydzielił Ci zadania dla pojazdu {assignment.vehicle_model}.",
+                "metadata": {
+                    "vehicle_id": assignment.vehicle_id,
+                    "vehicle_model": assignment.vehicle_model,
+                    "tasks": assignment.tasks,
+                },
+                "action_required": False,
+                "status": "unread",
+            }
+        )
+    except Exception as exc:
+        print(f"Failed to push task notification: {exc}")
+    return result
 
 @app.post("/dashboard/employee/tasks/update")
 async def update_task_status(update: TaskUpdate, authorization: str = Header(None)):

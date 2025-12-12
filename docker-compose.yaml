@@ -104,12 +104,15 @@ services:
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
       ANALYTICS_SERVICE_URL: http://analytics-service:8000
+      NOTIFICATIONS_SERVICE_URL: http://notifications-service:8000
     ports:
       - "8002:8000"
     depends_on:
       rabbitmq:
         condition: service_started
       analytics-service:
+        condition: service_started
+      notifications-service:
         condition: service_started
     volumes:
       - ./services/dashboard-service:/app
@@ -144,8 +147,41 @@ services:
     volumes:
       - ./services/analytics-service:/app
 
+  notifications-db:
+    build:
+      context: ./databases/notifications
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: notifications_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - notifications-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d notifications_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  notifications-service:
+    build:
+      context: ./services/notifications-service
+    env_file:
+      - services/notifications-service/.env
+    ports:
+      - "8004:8000"
+    depends_on:
+      notifications-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    volumes:
+      - ./services/notifications-service:/app
+
 volumes:
   frontend_node_modules:
   user-management-data:
   vehicle-db-data:
   analytics-db-data:
+  notifications-db-data:

@@ -3,6 +3,8 @@ from __future__ import annotations
 import secrets
 from datetime import timedelta
 
+import httpx
+from django.conf import settings
 from django.db import connection
 from django.utils import timezone
 from rest_framework import generics, permissions, response, status, views
@@ -11,6 +13,27 @@ from .models import User, UserSession, ensure_profile_for_user
 from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer, UserInviteSerializer
 
 SESSION_TTL = timedelta(days=7)
+
+
+class ServiceTokenPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        expected = settings.INTERNAL_SERVICE_TOKEN
+        return bool(expected) and request.headers.get("X-Service-Token") == expected
+
+
+def send_notification(payload: dict):
+    token = settings.NOTIFICATIONS_SERVICE_TOKEN
+    url = settings.NOTIFICATIONS_SERVICE_URL
+    if not token or not url:
+        return
+    headers = {
+        "X-Service-Token": token,
+        "Content-Type": "application/json",
+    }
+    try:
+        httpx.post(f"{url}/notifications", json=payload, headers=headers, timeout=5.0)
+    except httpx.RequestError:
+        pass
 
 
 def authenticate_user(email: str, password: str) -> User | None:
@@ -158,38 +181,88 @@ class InviteUserView(views.APIView):
         email = serializer.validated_data["email"]
         full_name = serializer.validated_data["full_name"]
         
-        # Check if user exists
         existing_user = User.objects.filter(email=email).first()
         
-        if existing_user:
-            if existing_user.manager_id:
-                return response.Response(
-                    {"detail": "User is already part of another team."}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Claim the user
-            existing_user.manager_id = request.user.id
-            existing_user.save()
-            return response.Response(UserSerializer(existing_user).data, status=status.HTTP_200_OK)
+        if existing_user and existing_user.manager_id:
+            return response.Response(
+                {"detail": "User is already part of another team."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Create user with default password "welcome123" and link to manager
-        user = User.objects.create(
-            email=email,
-            full_name=full_name,
-            password_hash="temp_hash",
-            role="employee",
-            status="active",
-            manager_id=request.user.id
+        if existing_user:
+            target_user = existing_user
+        else:
+            user = User.objects.create(
+                email=email,
+                full_name=full_name,
+                password_hash="temp_hash",
+                role="employee",
+                status="pending",
+                manager_id=None
+            )
+            query = """
+                UPDATE users 
+                SET password_hash = crypt(%s, gen_salt('bf'))
+                WHERE id = %s
+            """
+            with connection.cursor() as cursor:
+                cursor.execute(query, ["welcome123", user.id])
+            target_user = user
+
+        ensure_profile_for_user(target_user)
+
+        notification_payload = {
+            "recipient_id": str(target_user.id),
+            "sender_id": str(request.user.id),
+            "type": "team_invite",
+            "title": "Zaproszenie do zespołu",
+            "body": f"{request.user.full_name} zaprasza Cię do swojego zespołu.",
+            "metadata": {
+                "manager_id": str(request.user.id),
+                "manager_name": request.user.full_name,
+                "manager_email": request.user.email,
+                "invitee_email": target_user.email,
+            },
+            "action_required": True,
+            "status": "pending",
+        }
+        send_notification(notification_payload)
+
+        return response.Response(
+            {
+                "detail": "Zaproszenie wysłane i oczekuje na akceptację.",
+                "user": UserSerializer(target_user).data,
+            },
+            status=status.HTTP_202_ACCEPTED,
         )
-        
-        query = """
-            UPDATE users 
-            SET password_hash = crypt(%s, gen_salt('bf'))
-            WHERE id = %s
-        """
-        with connection.cursor() as cursor:
-            cursor.execute(query, ["welcome123", user.id])
-            
+
+
+class AdminListInternalView(generics.ListAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [ServiceTokenPermission]
+
+    def get_queryset(self):
+        return User.objects.filter(role="admin")
+
+
+class TeamAcceptanceView(views.APIView):
+    permission_classes = [ServiceTokenPermission]
+
+    def post(self, request):
+        user_id = request.data.get("user_id")
+        manager_id = request.data.get("manager_id")
+        if not user_id or not manager_id:
+            return response.Response({"detail": "Missing identifiers"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return response.Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        user.manager_id = manager_id
+        user.status = "active"
+        user.updated_at = timezone.now()
+        user.save(update_fields=["manager_id", "status", "updated_at"])
         ensure_profile_for_user(user)
-        return response.Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+        return response.Response(UserSerializer(user).data, status=status.HTTP_200_OK)

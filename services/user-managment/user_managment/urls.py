@@ -28,4 +28,6 @@ urlpatterns = [
     path('api/users', views.UserListView.as_view(), name='users-list'),
     path('api/users/team', views.TeamView.as_view(), name='users-team'),
     path('api/users/invite', views.InviteUserView.as_view(), name='users-invite'),
+    path('api/internal/admins', views.AdminListInternalView.as_view(), name='internal-admins'),
+    path('api/internal/team/accept', views.TeamAcceptanceView.as_view(), name='internal-team-accept'),
 ]
