@@ -87,6 +87,10 @@ DATABASES = {
     }
 }
 
+NOTIFICATIONS_SERVICE_URL = os.environ.get('NOTIFICATIONS_SERVICE_URL', 'http://notifications-service:8000')
+NOTIFICATIONS_SERVICE_TOKEN = os.environ.get('NOTIFICATIONS_SERVICE_TOKEN', '')
+INTERNAL_SERVICE_TOKEN = os.environ.get('INTERNAL_SERVICE_TOKEN', '')
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
