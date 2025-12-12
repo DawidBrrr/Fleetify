@@ -1,4 +1,5 @@
 import uuid
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.db import models
 from django.utils import timezone
@@ -98,6 +99,40 @@ class WorkerProfile(models.Model):
     class Meta:
         db_table = "worker_profiles"
         managed = False
+
+    def _local_now(self):
+        tz_name = self.timezone_name or "UTC"
+        try:
+            tz = ZoneInfo(tz_name)
+        except ZoneInfoNotFoundError:
+            tz = timezone.utc
+        return timezone.now().astimezone(tz)
+
+    def is_within_scheduled_hours(self) -> bool:
+        if not self.work_hours_start or not self.work_hours_end:
+            return False
+        now_local = self._local_now()
+        current_time = now_local.time()
+        start = self.work_hours_start
+        end = self.work_hours_end
+
+        if start == end:
+            return True  # covers 24h availability
+        if start < end:
+            return start <= current_time < end
+        # overnight shift (e.g., 22:00-06:00)
+        return current_time >= start or current_time < end
+
+    def has_active_session(self) -> bool:
+        return self.user.sessions.filter(expires_at__gt=timezone.now()).exists()
+
+    @property
+    def current_presence_state(self) -> str:
+        if self.has_active_session():
+            return "zalogowany"
+        if self.is_within_scheduled_hours():
+            return "dostepny"
+        return "niedostepny"
 
 
 def ensure_profile_for_user(user: User):

@@ -163,6 +163,11 @@ async def add_vehicle(vehicle: VehicleCreate, authorization: str = Header(None))
 async def get_employees(authorization: str = Header(None)):
     return await fetch_data(USER_MANAGEMENT_URL, "/api/users", authorization)
 
+
+@app.get("/dashboard/team")
+async def get_team(authorization: str = Header(None)):
+    return await fetch_data(USER_MANAGEMENT_URL, "/api/users/team", authorization)
+
 @app.post("/dashboard/employees")
 async def invite_employee(invite: UserInvite, authorization: str = Header(None)):
     return await post_data(USER_MANAGEMENT_URL, "/api/users/invite", invite.dict(), authorization)
