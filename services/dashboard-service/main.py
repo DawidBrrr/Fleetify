@@ -108,7 +108,7 @@ async def send_service_notification(payload: dict):
         "X-Service-Token": NOTIFICATIONS_SERVICE_TOKEN,
         "Content-Type": "application/json",
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
             await client.post(f"{NOTIFICATIONS_SERVICE_URL}/notifications", json=payload, headers=headers)
         except httpx.RequestError as exc:

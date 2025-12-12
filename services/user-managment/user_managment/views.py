@@ -6,10 +6,11 @@ from datetime import timedelta
 import httpx
 from django.conf import settings
 from django.db import connection
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, permissions, response, status, views
 
-from .models import User, UserSession, ensure_profile_for_user
+from .models import User, UserSession, WorkerProfile, ensure_profile_for_user
 from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer, UserInviteSerializer
 
 SESSION_TTL = timedelta(days=7)
@@ -31,9 +32,28 @@ def send_notification(payload: dict):
         "Content-Type": "application/json",
     }
     try:
-        httpx.post(f"{url}/notifications", json=payload, headers=headers, timeout=5.0)
+        httpx.post(
+            f"{url}/notifications",
+            json=payload,
+            headers=headers,
+            timeout=5.0,
+            follow_redirects=True,
+        )
     except httpx.RequestError:
         pass
+
+
+def assign_manager(user: User, manager: User | None, *, status: str | None = None):
+    ensure_profile_for_user(user)
+    fields = ["manager", "updated_at"]
+    user.manager = manager
+    user.updated_at = timezone.now()
+    if status:
+        user.status = status
+        fields.append("status")
+    user.save(update_fields=fields)
+    if user.role == "employee":
+        WorkerProfile.objects.filter(user=user).update(manager=manager, updated_at=timezone.now())
 
 
 def authenticate_user(email: str, password: str) -> User | None:
@@ -125,9 +145,11 @@ class UserListView(generics.ListAPIView):
     def get_queryset(self):
         # Only show employees managed by the current admin, including profile/presence data
         return (
-            User.objects.filter(role="employee", manager_id=self.request.user.id)
+            User.objects.filter(role="employee")
+            .filter(Q(manager_id=self.request.user.id) | Q(worker_profile__manager_id=self.request.user.id))
             .select_related("worker_profile", "worker_profile__manager", "admin_profile")
             .prefetch_related("sessions")
+            .distinct()
         )
 
 
@@ -209,7 +231,7 @@ class InviteUserView(views.APIView):
                 cursor.execute(query, ["welcome123", user.id])
             target_user = user
 
-        ensure_profile_for_user(target_user)
+        assign_manager(target_user, request.user, status="pending")
 
         notification_payload = {
             "recipient_id": str(target_user.id),
@@ -251,18 +273,29 @@ class TeamAcceptanceView(views.APIView):
     def post(self, request):
         user_id = request.data.get("user_id")
         manager_id = request.data.get("manager_id")
-        if not user_id or not manager_id:
-            return response.Response({"detail": "Missing identifiers"}, status=status.HTTP_400_BAD_REQUEST)
+        action = (request.data.get("action") or "accept").lower()
+        if action not in {"accept", "decline"}:
+            return response.Response({"detail": "Unsupported action"}, status=status.HTTP_400_BAD_REQUEST)
+        if not user_id:
+            return response.Response({"detail": "Missing user identifier"}, status=status.HTTP_400_BAD_REQUEST)
+        if action == "accept" and not manager_id:
+            return response.Response({"detail": "Missing manager identifier"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return response.Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        user.manager_id = manager_id
-        user.status = "active"
-        user.updated_at = timezone.now()
-        user.save(update_fields=["manager_id", "status", "updated_at"])
-        ensure_profile_for_user(user)
+        manager = None
+        if manager_id:
+            try:
+                manager = User.objects.get(id=manager_id)
+            except User.DoesNotExist:
+                return response.Response({"detail": "Manager not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if action == "accept":
+            assign_manager(user, manager, status="active")
+        else:
+            assign_manager(user, None, status="pending")
 
         return response.Response(UserSerializer(user).data, status=status.HTTP_200_OK)
