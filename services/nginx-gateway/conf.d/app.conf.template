@@ -27,6 +27,7 @@ server {
     location ~ ^/api/(login|register|refresh|logout)$ {
         include /etc/nginx/includes/cors.conf;
         include /etc/nginx/includes/proxy.conf;
+        include /etc/nginx/includes/rate-limit.conf;
         
         access_by_lua_block {
             assert(loadfile("/etc/nginx/lua/auth.lua"))()
@@ -41,6 +42,7 @@ server {
     location /api/users {
         include /etc/nginx/includes/cors.conf;
         include /etc/nginx/includes/proxy.conf;
+        include /etc/nginx/includes/rate-limit.conf;
         proxy_pass ${USER_MANAGEMENT_URL};
     }
 
@@ -48,6 +50,7 @@ server {
     location /api/vehicles {
         include /etc/nginx/includes/cors.conf;
         include /etc/nginx/includes/proxy.conf;
+        include /etc/nginx/includes/rate-limit.conf;
         
         rewrite ^/api/vehicles/(.*) /vehicles/$1 break;
         rewrite ^/api/vehicles /vehicles/ break;
@@ -58,6 +61,7 @@ server {
     location /api/dashboard {
         include /etc/nginx/includes/cors.conf;
         include /etc/nginx/includes/proxy.conf;
+        include /etc/nginx/includes/rate-limit.conf;
         
         rewrite ^/api/dashboard/(.*) /dashboard/$1 break;
         rewrite ^/api/dashboard /dashboard/ break;

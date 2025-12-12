@@ -4,10 +4,51 @@ from django.db import connection
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import User
+from .models import (
+    AdminProfile,
+    User,
+    WorkerProfile,
+    ensure_profile_for_user,
+)
 
+
+class AdminProfileSerializer(serializers.ModelSerializer):
+    timezone = serializers.CharField(source="timezone_name")
+
+    class Meta:
+        model = AdminProfile
+        fields = [
+            "department",
+            "permissions",
+            "timezone",
+            "notes",
+        ]
+
+
+class WorkerProfileSerializer(serializers.ModelSerializer):
+    manager_id = serializers.UUIDField(read_only=True)
+    timezone = serializers.CharField(source="timezone_name")
+    presence_state = serializers.CharField(source="current_presence_state", read_only=True)
+
+    class Meta:
+        model = WorkerProfile
+        fields = [
+            "position_title",
+            "department",
+            "employment_type",
+            "manager_id",
+            "work_hours_start",
+            "work_hours_end",
+            "timezone",
+            "presence_state",
+            "availability_status",
+            "notes",
+        ]
 
 class UserSerializer(serializers.ModelSerializer):
+    admin_profile = AdminProfileSerializer(read_only=True)
+    worker_profile = WorkerProfileSerializer(read_only=True)
+
     class Meta:
         model = User
         fields = [
@@ -16,9 +57,12 @@ class UserSerializer(serializers.ModelSerializer):
             "full_name",
             "role",
             "status",
+            "manager_id",
             "last_login_at",
             "created_at",
             "updated_at",
+            "admin_profile",
+            "worker_profile",
         ]
 
 
@@ -64,8 +108,10 @@ class RegistrationSerializer(serializers.Serializer):
             cursor.execute(query, [email, full_name, password, role])
             row = cursor.fetchone()
             user_id = row[0]
-            
-        return User.objects.get(id=user_id)
+
+        user = User.objects.get(id=user_id)
+        ensure_profile_for_user(user)
+        return user
 
 class UserInviteSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -99,4 +145,6 @@ class UserInviteSerializer(serializers.Serializer):
             )
             cursor.fetchone()
 
-        return User.objects.get(id=user_id)
+        user = User.objects.get(id=user_id)
+        ensure_profile_for_user(user)
+        return user

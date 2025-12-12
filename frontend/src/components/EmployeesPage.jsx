@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardApi } from '../services/api/dashboard';
 
+const PRESENCE_UI = {
+  zalogowany: { label: 'Zalogowany', className: 'success' },
+  dostepny: { label: 'Dostępny', className: 'info' },
+  niedostepny: { label: 'Niedostępny', className: 'secondary' }
+};
+
+function PresenceBadge({ state }) {
+  if (!state) {
+    return <span className="badge bg-light text-dark">Brak danych</span>;
+  }
+  const mapping = PRESENCE_UI[state] || { label: state, className: 'secondary' };
+  return <span className={`badge bg-${mapping.className}`}>{mapping.label}</span>;
+}
+
 function EmployeeCard({ employee, onAssign }) {
   return (
     <div className="card h-100 shadow-sm border-0">
@@ -14,11 +28,14 @@ function EmployeeCard({ employee, onAssign }) {
             <p className="text-muted small mb-0">{employee.email}</p>
           </div>
         </div>
-        <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
           <span className={`badge bg-${employee.status === 'active' ? 'success' : 'secondary'}`}>
             {employee.status === 'active' ? 'Aktywny' : employee.status}
           </span>
-          <small className="text-muted">Dołączył: {new Date(employee.created_at).toLocaleDateString()}</small>
+          {employee.worker_profile && (
+            <PresenceBadge state={employee.worker_profile.presence_state} />
+          )}
+          <small className="text-muted ms-auto">Dołączył: {new Date(employee.created_at).toLocaleDateString()}</small>
         </div>
         <button className="btn btn-sm btn-outline-primary w-100" onClick={() => onAssign(employee)}>
           <i className="bi bi-clipboard-check me-2"></i>
