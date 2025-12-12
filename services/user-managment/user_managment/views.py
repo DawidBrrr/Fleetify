@@ -7,7 +7,7 @@ from django.db import connection
 from django.utils import timezone
 from rest_framework import generics, permissions, response, status, views
 
-from .models import User, UserSession
+from .models import User, UserSession, ensure_profile_for_user
 from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer, UserInviteSerializer
 
 SESSION_TTL = timedelta(days=7)
@@ -147,4 +147,5 @@ class InviteUserView(views.APIView):
         with connection.cursor() as cursor:
             cursor.execute(query, ["welcome123", user.id])
             
+        ensure_profile_for_user(user)
         return response.Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
