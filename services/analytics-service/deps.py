@@ -1,8 +1,7 @@
 from fastapi import Header, HTTPException, status
 import httpx
-import os
 
-USER_MANAGEMENT_URL = os.getenv("USER_MANAGEMENT_URL", "http://user-management:8000")
+from config import USER_MANAGEMENT_URL
 
 async def get_current_user(authorization: str = Header(None)):
     if not authorization:

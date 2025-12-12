@@ -2,15 +2,17 @@ from fastapi import FastAPI, HTTPException, Header, Body
 from pydantic import BaseModel
 import asyncio
 import httpx
-import os
 import threading
 from app.messaging import consume_messages
 
+from config import (
+    ANALYTICS_SERVICE_URL,
+    VEHICLE_SERVICE_URL,
+    USER_MANAGEMENT_URL,
+)
+
 app = FastAPI(title="Dashboard Service")
 
-ANALYTICS_SERVICE_URL = os.getenv("ANALYTICS_SERVICE_URL", "http://analytics-service:8000")
-VEHICLE_SERVICE_URL = os.getenv("VEHICLE_SERVICE_URL", "http://vehicle-service:8000")
-USER_MANAGEMENT_URL = os.getenv("USER_MANAGEMENT_URL", "http://user-management:8000")
 
 from typing import Optional
 
