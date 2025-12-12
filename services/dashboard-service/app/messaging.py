@@ -1,11 +1,8 @@
 import pika
 import json
-import os
 import time
 
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
-RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
-RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
+from config import RABBITMQ_HOST, RABBITMQ_USER, RABBITMQ_PASS
 
 def callback(ch, method, properties, body):
     print(f" [x] Received {body}")

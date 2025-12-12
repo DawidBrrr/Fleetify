@@ -7,6 +7,9 @@ This service aggregates data for the admin and employee dashboards.
 - FastAPI
 - RabbitMQ (Pika)
 
+## Environment Setup
+Copy `.env.example` to `.env` in this folder and adjust URLs or RabbitMQ credentials when running outside Docker.
+
 ## API Endpoints
 - `GET /dashboard/admin`: Get admin dashboard data
 - `GET /dashboard/employee`: Get employee dashboard data
