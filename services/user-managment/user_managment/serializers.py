@@ -28,6 +28,7 @@ class AdminProfileSerializer(serializers.ModelSerializer):
 class WorkerProfileSerializer(serializers.ModelSerializer):
     manager_id = serializers.UUIDField(read_only=True)
     timezone = serializers.CharField(source="timezone_name")
+    presence_state = serializers.CharField(source="current_presence_state", read_only=True)
 
     class Meta:
         model = WorkerProfile
@@ -39,6 +40,7 @@ class WorkerProfileSerializer(serializers.ModelSerializer):
             "work_hours_start",
             "work_hours_end",
             "timezone",
+            "presence_state",
             "availability_status",
             "notes",
         ]

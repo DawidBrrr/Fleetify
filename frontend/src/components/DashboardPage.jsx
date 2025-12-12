@@ -3,12 +3,21 @@ import AdminDashboard from "./AdminDashboard";
 import EmployeeDashboard from "./EmployeeDashboard";
 import VehiclesPage from "./VehiclesPage";
 import EmployeesPage from "./EmployeesPage";
+import TeamPage from "./TeamPage";
 import logo from "../assets/logo.svg";
 
-const NAV_LINKS = [
+const ADMIN_NAV = [
   { id: "dashboard", label: "Pulpit", icon: "📊" },
   { id: "vehicles", label: "Pojazdy", icon: "🚗" },
   { id: "employees", label: "Pracownicy", icon: "👥" },
+  { id: "notifications", label: "Powiadomienia", icon: "🔔" },
+  { id: "integrations", label: "Integracje", icon: "🔗" }
+];
+
+const WORKER_NAV = [
+  { id: "dashboard", label: "Pulpit", icon: "📊" },
+  { id: "vehicles", label: "Pojazdy", icon: "🚗" },
+  { id: "team", label: "Zespół", icon: "🤝" },
   { id: "notifications", label: "Powiadomienia", icon: "🔔" },
   { id: "integrations", label: "Integracje", icon: "🔗" }
 ];
@@ -18,6 +27,7 @@ export default function DashboardPage({ session, data, onLogout, onRefresh }) {
 
   if (!session?.user || !data) return null;
   const isAdmin = session.user.role === "admin";
+  const navLinks = isAdmin ? ADMIN_NAV : WORKER_NAV;
 
   const handleRefresh = () => {
     if (onRefresh) {
@@ -37,12 +47,14 @@ export default function DashboardPage({ session, data, onLogout, onRefresh }) {
         );
       case "vehicles":
         return <VehiclesPage />;
+      case "team":
+        return <TeamPage />;
       case "employees":
         return <EmployeesPage />;
       default:
         return (
           <div className="p-5 text-center">
-            <h2 className="h4 text-muted">Widok "{NAV_LINKS.find(l => l.id === activeView)?.label}" jest w trakcie budowy</h2>
+            <h2 className="h4 text-muted">Widok "{navLinks.find(l => l.id === activeView)?.label || activeView}" jest w trakcie budowy</h2>
             <p>Ta funkcjonalność zostanie dodana wkrótce.</p>
           </div>
         );
@@ -60,7 +72,7 @@ export default function DashboardPage({ session, data, onLogout, onRefresh }) {
           </div>
         </div>
         <nav className="d-flex flex-column gap-2 flex-grow-1">
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <button 
               key={link.id} 
               type="button" 

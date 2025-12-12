@@ -69,6 +69,14 @@ export const dashboardApi = {
 		return handleResponse(response, "Failed to load employees");
 	},
 
+	fetchTeam: async () => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/team`, {
+			method: "GET",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to load team info");
+	},
+
 	inviteEmployee: async (employeeData) => {
 		const response = await fetch(`${API_BASE_URL}/api/dashboard/employees`, {
 			method: "POST",

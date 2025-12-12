@@ -26,5 +26,6 @@ urlpatterns = [
     path('api/auth/logout', views.LogoutView.as_view(), name='auth-logout'),
     path('api/users/me', views.MeView.as_view(), name='users-me'),
     path('api/users', views.UserListView.as_view(), name='users-list'),
+    path('api/users/team', views.TeamView.as_view(), name='users-team'),
     path('api/users/invite', views.InviteUserView.as_view(), name='users-invite'),
 ]

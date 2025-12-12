@@ -100,8 +100,52 @@ class UserListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Only show employees managed by the current admin
-        return User.objects.filter(role="employee", manager_id=self.request.user.id)
+        # Only show employees managed by the current admin, including profile/presence data
+        return (
+            User.objects.filter(role="employee", manager_id=self.request.user.id)
+            .select_related("worker_profile", "worker_profile__manager", "admin_profile")
+            .prefetch_related("sessions")
+        )
+
+
+class TeamView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = (
+            User.objects.select_related("worker_profile", "admin_profile", "manager")
+            .prefetch_related("sessions")
+            .get(id=request.user.id)
+        )
+
+        if user.role == "admin":
+            manager = None
+            teammates_qs = (
+                User.objects.filter(manager_id=user.id)
+                .select_related("worker_profile", "admin_profile", "manager")
+                .prefetch_related("sessions")
+            )
+        else:
+            manager = (
+                User.objects.select_related("worker_profile", "admin_profile", "manager")
+                .prefetch_related("sessions")
+                .filter(id=user.manager_id)
+                .first()
+            )
+            teammates_qs = (
+                User.objects.filter(manager_id=user.manager_id)
+                .exclude(id=user.id)
+                .select_related("worker_profile", "admin_profile", "manager")
+                .prefetch_related("sessions")
+            )
+
+        return response.Response(
+            {
+                "me": UserSerializer(user).data,
+                "manager": UserSerializer(manager).data if manager else None,
+                "teammates": UserSerializer(teammates_qs, many=True).data,
+            }
+        )
 
 
 class InviteUserView(views.APIView):
