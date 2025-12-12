@@ -95,6 +95,32 @@ export const dashboardApi = {
 		return handleResponse(response, "Failed to assign task");
 	},
 
+	fetchNotifications: async () => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/notifications`, {
+			method: "GET",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to load notifications");
+	},
+
+	ackNotification: async (notificationId) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/notifications/${notificationId}/ack`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify({}),
+		});
+		return handleResponse(response, "Failed to update notification");
+	},
+
+	respondToNotification: async (notificationId, action) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/notifications/${notificationId}/respond`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify({ action }),
+		});
+		return handleResponse(response, "Failed to respond to notification");
+	},
+
 	updateTaskStatus: async (data) => {
 		const response = await fetch(`${API_BASE_URL}/api/dashboard/employee/tasks/update`, {
 			method: "POST",

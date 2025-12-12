@@ -4,6 +4,7 @@ import EmployeeDashboard from "./EmployeeDashboard";
 import VehiclesPage from "./VehiclesPage";
 import EmployeesPage from "./EmployeesPage";
 import TeamPage from "./TeamPage";
+import NotificationsPage from "./NotificationsPage";
 import logo from "../assets/logo.svg";
 
 const ADMIN_NAV = [
@@ -51,6 +52,8 @@ export default function DashboardPage({ session, data, onLogout, onRefresh }) {
         return <TeamPage />;
       case "employees":
         return <EmployeesPage />;
+      case "notifications":
+        return <NotificationsPage />;
       default:
         return (
           <div className="p-5 text-center">
