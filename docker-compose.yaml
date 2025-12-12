@@ -99,6 +99,8 @@ services:
   dashboard-service:
     build:
       context: ./services/dashboard-service
+    env_file:
+      - services/dashboard-service/.env
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: guest

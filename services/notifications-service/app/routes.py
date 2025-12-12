@@ -12,7 +12,7 @@ from .service_clients import fetch_admin_ids, set_worker_manager
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
-@router.get("/", response_model=List[schemas.NotificationOut])
+@router.get("", response_model=List[schemas.NotificationOut])
 async def list_notifications(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user_id = current_user["id"]
     return (
@@ -22,7 +22,7 @@ async def list_notifications(current_user: dict = Depends(get_current_user), db:
         .all()
     )
 
-@router.post("/", response_model=schemas.NotificationOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=schemas.NotificationOut, status_code=status.HTTP_201_CREATED)
 async def create_notification(
     payload: schemas.NotificationCreate,
     _: None = Depends(require_service_token),
@@ -79,7 +79,9 @@ async def respond_to_notification(
 async def handle_team_invite_response(notification: models.Notification, action: str, current_user: dict, db: Session):
     manager_id = notification.metadata.get("manager_id")
     if action == "accept" and manager_id:
-        await set_worker_manager(current_user["id"], manager_id)
+        await set_worker_manager(current_user["id"], manager_id, action="accept")
+    if action == "decline":
+        await set_worker_manager(current_user["id"], None, action="decline")
     if manager_id:
         follow_up = models.Notification(
             recipient_id=UUID(manager_id),
