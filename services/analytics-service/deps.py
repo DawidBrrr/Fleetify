@@ -5,10 +5,6 @@ from config import USER_MANAGEMENT_URL
 
 async def get_current_user(authorization: str = Header(None)):
     if not authorization:
-        # For development/testing if no auth header, maybe return a default user or raise error?
-        # The user asked for data to belong to "some user".
-        # If I raise error, the frontend might break if it doesn't send token correctly yet.
-        # But let's try to be correct.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authorization header missing",
