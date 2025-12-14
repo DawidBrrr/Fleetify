@@ -64,6 +64,8 @@ export default function EmployeesPage() {
     tasks: []
   });
   const [newTask, setNewTask] = useState('');
+  const [assigningVehicle, setAssigningVehicle] = useState(false);
+  const [savingTasks, setSavingTasks] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -125,35 +127,59 @@ export default function EmployeesPage() {
     });
   };
 
-  const handleAssignmentSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedEmployee || !assignmentData.vehicle_id) {
-      alert('Wybierz pojazd');
-      return;
-    }
-
+  const buildVehiclePayload = () => {
     const selectedVehicle = vehicles.find(v => v.id.toString() === assignmentData.vehicle_id);
-    if (!selectedVehicle) return;
-
-    const payload = {
+    if (!selectedVehicle) return null;
+    return {
       user_id: selectedEmployee.id,
       vehicle_id: selectedVehicle.id.toString(),
       vehicle_model: `${selectedVehicle.make} ${selectedVehicle.model}`,
       vehicle_vin: selectedVehicle.vin,
       vehicle_mileage: `${selectedVehicle.odometer} km`,
       vehicle_battery: selectedVehicle.battery_level || selectedVehicle.fuel_level || 0,
-      vehicle_tire_pressure: "2.4 bar", // Mock for now as we don't track this yet
-      tasks: assignmentData.tasks
+      vehicle_tire_pressure: "2.4 bar",
     };
+  };
 
+  const handleVehicleAssignment = async (e) => {
+    e.preventDefault();
+    if (!selectedEmployee || !assignmentData.vehicle_id) {
+      alert('Wybierz pojazd');
+      return;
+    }
+    const payload = buildVehiclePayload();
+    if (!payload) return;
+    setAssigningVehicle(true);
     try {
-      await dashboardApi.assignTask(payload);
-      setShowAssignForm(false);
-      setSelectedEmployee(null);
-      alert('Zadania przydzielone pomyślnie!');
+      await dashboardApi.assignVehicle(payload);
+      alert('Pojazd przydzielony pomyślnie!');
+      loadData();
+    } catch (error) {
+      console.error('Failed to assign vehicle:', error);
+      alert('Nie udało się przydzielić pojazdu');
+    } finally {
+      setAssigningVehicle(false);
+    }
+  };
+
+  const handleTasksAssignment = async (e) => {
+    e.preventDefault();
+    if (!selectedEmployee) {
+      alert('Wybierz pracownika');
+      return;
+    }
+    setSavingTasks(true);
+    try {
+      await dashboardApi.assignTasks({
+        user_id: selectedEmployee.id,
+        tasks: assignmentData.tasks,
+      });
+      alert('Zadania zapisane pomyślnie!');
     } catch (error) {
       console.error('Failed to assign tasks:', error);
-      alert('Nie udało się przydzielić zadań');
+      alert('Nie udało się zapisać zadań');
+    } finally {
+      setSavingTasks(false);
     }
   };
 
@@ -229,12 +255,12 @@ export default function EmployeesPage() {
         <div className="card mb-4 border-0 shadow-sm bg-light">
           <div className="card-body p-4">
             <h5 className="mb-3">Przydziel Zadania dla: {selectedEmployee.full_name}</h5>
-            <form onSubmit={handleAssignmentSubmit}>
-              <div className="row g-3">
-                <div className="col-md-6">
+            <div className="row g-4">
+              <div className="col-md-5">
+                <form onSubmit={handleVehicleAssignment}>
                   <label className="form-label">Wybierz Pojazd</label>
                   <select 
-                    className="form-select"
+                    className="form-select mb-3"
                     value={assignmentData.vehicle_id}
                     onChange={(e) => setAssignmentData({...assignmentData, vehicle_id: e.target.value})}
                     required
@@ -246,8 +272,13 @@ export default function EmployeesPage() {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="col-12">
+                  <button type="submit" className="btn btn-outline-primary w-100" disabled={assigningVehicle}>
+                    {assigningVehicle ? 'Zapisywanie...' : 'Zapisz przydział pojazdu'}
+                  </button>
+                </form>
+              </div>
+              <div className="col-md-7">
+                <form onSubmit={handleTasksAssignment}>
                   <label className="form-label">Lista Zadań</label>
                   <div className="input-group mb-2">
                     <input 
@@ -260,7 +291,7 @@ export default function EmployeesPage() {
                     />
                     <button className="btn btn-outline-secondary" type="button" onClick={handleAddTask}>Dodaj</button>
                   </div>
-                  <ul className="list-group">
+                  <ul className="list-group mb-3">
                     {assignmentData.tasks.map(task => (
                       <li key={task.id} className="list-group-item d-flex justify-content-between align-items-center">
                         {task.label}
@@ -269,13 +300,15 @@ export default function EmployeesPage() {
                     ))}
                     {assignmentData.tasks.length === 0 && <li className="list-group-item text-muted fst-italic">Brak zadań</li>}
                   </ul>
-                </div>
-                <div className="col-12 text-end">
-                  <button type="button" className="btn btn-link text-muted me-2" onClick={() => setShowAssignForm(false)}>Anuluj</button>
-                  <button type="submit" className="btn btn-primary">Zapisz Przydział</button>
-                </div>
+                  <button type="submit" className="btn btn-primary" disabled={savingTasks}>
+                    {savingTasks ? 'Zapisywanie...' : 'Zapisz zadania'}
+                  </button>
+                </form>
               </div>
-            </form>
+            </div>
+            <div className="text-end mt-3">
+              <button type="button" className="btn btn-link text-muted" onClick={() => setShowAssignForm(false)}>Zamknij</button>
+            </div>
           </div>
         </div>
       )}

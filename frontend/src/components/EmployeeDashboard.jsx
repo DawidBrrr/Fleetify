@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardApi } from '../services/api/dashboard';
 
+const formatDate = (value) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('pl-PL');
+};
+
 function TaskItem({ task, onToggle }) {
   return (
     <li className="d-flex align-items-center gap-2">
@@ -36,6 +42,10 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
   }, [data]);
 
   if (!localData) return null;
+
+  const trips = localData.tripLogs || localData.trips || [];
+  const fuelLogs = localData.fuelLogs || [];
+  const reminders = localData.reminders || [];
 
   const handleTaskToggle = async (taskId, newStatus) => {
     try {
@@ -88,7 +98,7 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
           vehicle: {
             ...localData.assignment.vehicle,
             mileage: updateForm.mileage,
-            battery: parseInt(updateForm.battery)
+            battery: parseInt(updateForm.energyLevel, 10)
           }
         }
       });
@@ -195,19 +205,26 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
               <table className="table align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>Trasa</th>
+                    <th>Pojazd / Trasa</th>
                     <th>Dystans</th>
                     <th>Koszt paliwa</th>
-                    <th>Efektywność</th>
+                    <th>Notatka</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {localData.trips.map((trip) => (
+                  {trips.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="text-center text-muted">
+                        Brak zapisanych przejazdów.
+                      </td>
+                    </tr>
+                  )}
+                  {trips.map((trip) => (
                     <tr key={trip.id}>
-                      <td className="fw-semibold">{trip.route}</td>
-                      <td>{trip.distance}</td>
-                      <td>{trip.cost}</td>
-                      <td>{trip.efficiency}</td>
+                      <td className="fw-semibold">{trip.vehicle_label || trip.route_label || 'Nieznana trasa'}</td>
+                      <td>{trip.distance_km ? `${trip.distance_km} km` : '—'}</td>
+                      <td>{trip.fuel_cost ? `${trip.fuel_cost} zł` : '—'}</td>
+                      <td className="text-muted small">{trip.notes || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -215,9 +232,34 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
             </div>
           </div>
           <div className="dashboard-panel">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h3 className="h5 mb-0">Tankowania</h3>
+              <span className="badge bg-success-subtle text-success">{fuelLogs.length}</span>
+            </div>
+            <div className="d-flex flex-column gap-2">
+              {fuelLogs.length === 0 && <span className="text-muted small">Brak danych</span>}
+              {fuelLogs.map((log) => (
+                <div key={log.id} className="border rounded-3 p-3">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <div className="fw-semibold">{log.vehicle_label || 'Pojazd'}</div>
+                      <small className="text-muted">{formatDate(log.created_at)}</small>
+                    </div>
+                    <span className="fw-bold">{log.total_cost ? `${log.total_cost} zł` : '—'}</span>
+                  </div>
+                  <div className="d-flex gap-4 small text-muted mt-2">
+                    <span>{log.liters ? `${log.liters} L` : '—'}</span>
+                    <span>{log.station || 'Stacja nieznana'}</span>
+                    {log.odometer && <span>{log.odometer} km</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="dashboard-panel">
             <h3 className="h5 mb-3">Przypomnienia</h3>
             <div className="d-flex flex-column gap-2">
-              {localData.reminders.map((reminder) => (
+              {reminders.map((reminder) => (
                 <Reminder key={reminder.id} reminder={reminder} />
               ))}
             </div>
