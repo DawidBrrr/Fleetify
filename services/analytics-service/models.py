@@ -65,3 +65,36 @@ class UserReminder(Base):
     message = Column(Text, nullable=False)
     severity = Column(String(20), default='info')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class TripLog(Base):
+    __tablename__ = "trip_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(36), nullable=False)
+    vehicle_id = Column(String(50), nullable=True)
+    vehicle_label = Column(String(120), nullable=True)
+    route_label = Column(String(200), nullable=True)
+    distance_km = Column(Numeric(10, 2), nullable=True)
+    fuel_used_l = Column(Numeric(10, 2), nullable=True)
+    fuel_cost = Column(Numeric(10, 2), nullable=True)
+    tolls_cost = Column(Numeric(10, 2), nullable=True)
+    notes = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class FuelLog(Base):
+    __tablename__ = "fuel_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(36), nullable=False)
+    vehicle_id = Column(String(50), nullable=True)
+    vehicle_label = Column(String(120), nullable=True)
+    liters = Column(Numeric(10, 2), nullable=False)
+    price_per_liter = Column(Numeric(10, 2), nullable=True)
+    total_cost = Column(Numeric(10, 2), nullable=True)
+    station = Column(String(120), nullable=True)
+    odometer = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -56,6 +56,35 @@ CREATE TABLE user_reminders (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE trip_logs (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    vehicle_id VARCHAR(50),
+    vehicle_label VARCHAR(120),
+    route_label VARCHAR(200),
+    distance_km NUMERIC(10, 2),
+    fuel_used_l NUMERIC(10, 2),
+    fuel_cost NUMERIC(10, 2),
+    tolls_cost NUMERIC(10, 2),
+    notes TEXT,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE fuel_logs (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    vehicle_id VARCHAR(50),
+    vehicle_label VARCHAR(120),
+    liters NUMERIC(10, 2) NOT NULL,
+    price_per_liter NUMERIC(10, 2),
+    total_cost NUMERIC(10, 2),
+    station VARCHAR(120),
+    odometer INTEGER,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Seed data for admin (ID 1)
 -- Note: Since we switched to UUIDs, these integer IDs won't match real users.
 -- They are placeholders. Real users will have empty dashboards initially.

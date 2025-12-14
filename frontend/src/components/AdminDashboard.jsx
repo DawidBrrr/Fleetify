@@ -10,19 +10,32 @@ function StatCard({ label, value, delta, tone = "info" }) {
   );
 }
 
+const formatDate = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("pl-PL");
+};
+
 function FleetRow({ item }) {
   const statusMap = {
     available: "Dostępny",
     in_use: "W użyciu",
     maintenance: "W serwisie",
+    assigned: "Przydzielone",
   };
   const statusLabel = statusMap[item.status] || item.status;
-  const statusClass =
-    item.status === "available" ? "success" : item.status === "maintenance" ? "danger" : "warning";
+  const statusClassMap = {
+    available: "success",
+    in_use: "warning",
+    maintenance: "danger",
+    assigned: "info",
+  };
+  const statusClass = statusClassMap[item.status] || "secondary";
 
   const isElectric = item.fuel_type === "electric";
   const isHybrid = item.fuel_type === "hybrid";
   const showBattery = isElectric || isHybrid;
+  const openIssues = item.open_issues || 0;
 
   return (
     <tr>
@@ -65,6 +78,16 @@ function FleetRow({ item }) {
           "—"
         )}
       </td>
+      <td>{formatDate(item.last_service_date)}</td>
+      <td>
+        {openIssues > 0 ? (
+          <span className="badge bg-danger-subtle text-danger">
+            {openIssues} zgłosz.
+          </span>
+        ) : (
+          <span className="text-muted">Brak</span>
+        )}
+      </td>
     </tr>
   );
 }
@@ -83,6 +106,9 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
 
   const costEntries = Object.entries(data.costBreakdown);
   const totalCost = costEntries.reduce((acc, [, value]) => acc + value, 0);
+  const recentTrips = data.recentTrips || [];
+  const recentFuelLogs = data.recentFuelLogs || [];
+  const issueSummary = data.issueSummary || { open: 0, byVehicle: [] };
 
   return (
     <div className="section-shell p-4 p-lg-5 dashboard-section">
@@ -135,6 +161,8 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                     <th>Status</th>
                     <th>Lokalizacja</th>
                     <th>Energia / Paliwo</th>
+                    <th>Serwis</th>
+                    <th>Alerty</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -166,6 +194,91 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                   </div>
                   <div className="progress w-100" role="progressbar" aria-valuenow={value} aria-valuemin="0" aria-valuemax={totalCost}>
                     <div className="progress-bar" style={{ width: `${value}%` }}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="dashboard-panel">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h3 className="h5 mb-0">Utrzymanie</h3>
+              <span className="badge bg-danger text-white">Otwarte: {issueSummary.open}</span>
+            </div>
+            <div className="d-flex flex-column gap-2">
+              {issueSummary.byVehicle.length === 0 && <span className="text-muted small">Brak aktywnych zgłoszeń</span>}
+              {issueSummary.byVehicle.map((item) => (
+                <div key={item.vehicle_id} className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <div className="fw-semibold">{item.vehicle_label}</div>
+                    <small className="text-muted">Ostatni serwis: {formatDate(item.last_service_date)}</small>
+                  </div>
+                  <span className="badge bg-danger-subtle text-danger">{item.open_issues} zgłosz.</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="row g-4 mt-1">
+        <div className="col-12 col-xl-7">
+          <div className="dashboard-panel h-100">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h3 className="h5 mb-0">Ostatnie przejazdy</h3>
+              <span className="badge bg-primary-subtle text-primary">{recentTrips.length} wpisów</span>
+            </div>
+            <div className="table-responsive">
+              <table className="table align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Pojazd / Trasa</th>
+                    <th>Dystans</th>
+                    <th>Koszt paliwa</th>
+                    <th>Notatka</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentTrips.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="text-center text-muted">
+                        Brak zapisanych przejazdów.
+                      </td>
+                    </tr>
+                  )}
+                  {recentTrips.map((trip) => (
+                    <tr key={trip.id}>
+                      <td className="fw-semibold">{trip.vehicle_label || trip.route_label || "Nieznana trasa"}</td>
+                      <td>{trip.distance_km ? `${trip.distance_km} km` : "—"}</td>
+                      <td>{trip.fuel_cost ? `${trip.fuel_cost} zł` : "—"}</td>
+                      <td className="text-muted small">{trip.notes || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div className="col-12 col-xl-5 d-flex flex-column gap-4">
+          <div className="dashboard-panel">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h3 className="h5 mb-0">Tankowania</h3>
+              <span className="badge bg-success-subtle text-success">{recentFuelLogs.length} wpisów</span>
+            </div>
+            <div className="d-flex flex-column gap-2">
+              {recentFuelLogs.length === 0 && <span className="text-muted small">Brak tankowań</span>}
+              {recentFuelLogs.map((log) => (
+                <div key={log.id} className="border rounded-3 p-3">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <div className="fw-semibold">{log.vehicle_label || "Pojazd"}</div>
+                      <small className="text-muted">{formatDate(log.created_at)}</small>
+                    </div>
+                    <span className="fw-bold">{log.total_cost ? `${log.total_cost} zł` : "—"}</span>
+                  </div>
+                  <div className="d-flex gap-4 small text-muted mt-2">
+                    <span>{log.liters ? `${log.liters} L` : "—"}</span>
+                    <span>{log.station || "Stacja nieznana"}</span>
+                    {log.odometer && <span>{log.odometer} km</span>}
                   </div>
                 </div>
               ))}
