@@ -29,7 +29,7 @@ function Reminder({ reminder }) {
 export default function EmployeeDashboard({ data, user, onLogout, showLogoutButton = true }) {
   const [localData, setLocalData] = useState(data);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [updateForm, setUpdateForm] = useState({ mileage: '', battery: '' });
+  const [updateForm, setUpdateForm] = useState({ mileage: '', energyLevel: '' });
 
   useEffect(() => {
     setLocalData(data);
@@ -66,7 +66,7 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
     if (localData.assignment) {
       setUpdateForm({
         mileage: localData.assignment.vehicle.mileage,
-        battery: localData.assignment.vehicle.battery
+        energyLevel: localData.assignment.vehicle.battery ?? localData.assignment.vehicle.fuel_level ?? 0
       });
       setShowUpdateModal(true);
     }
@@ -75,7 +75,11 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
   const handleUpdateStatus = async (e) => {
     e.preventDefault();
     try {
-      await dashboardApi.updateVehicleStatus(updateForm);
+      const payload = {
+        mileage: updateForm.mileage,
+        battery: Number(updateForm.energyLevel),
+      };
+      await dashboardApi.updateVehicleStatus(payload);
       setShowUpdateModal(false);
       setLocalData({
         ...localData,
@@ -136,10 +140,15 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
                     <h5>{localData.assignment.vehicle.mileage}</h5>
                   </div>
                   <div className="col-6">
-                    <p className="text-muted small mb-1">Bateria</p>
+                    <p className="text-muted small mb-1">
+                      {(localData.assignment.vehicle.fuel_type === 'electric' || localData.assignment.vehicle.fuel_type === 'hybrid') ? 'Bateria' : 'Paliwo'}
+                    </p>
                     <div className="battery">
-                      <div className="battery__level" style={{ width: `${localData.assignment.vehicle.battery}%` }}></div>
-                      <span>{localData.assignment.vehicle.battery}%</span>
+                      <div
+                        className="battery__level"
+                          style={{ width: `${(localData.assignment.vehicle.battery ?? localData.assignment.vehicle.fuel_level ?? 0)}%` }}
+                      ></div>
+                        <span>{localData.assignment.vehicle.battery ?? localData.assignment.vehicle.fuel_level ?? 0}%</span>
                     </div>
                   </div>
                   <div className="col-12">
@@ -241,8 +250,8 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
                       type="number" 
                       className="form-control" 
                       min="0" max="100"
-                      value={updateForm.battery} 
-                      onChange={(e) => setUpdateForm({...updateForm, battery: e.target.value})}
+                      value={updateForm.energyLevel} 
+                      onChange={(e) => setUpdateForm({...updateForm, energyLevel: e.target.value})}
                     />
                   </div>
                   <div className="text-end">
