@@ -59,6 +59,27 @@ const parseNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const parseInteger = (value) => {
+  const parsed = parseNumber(value);
+  return parsed === undefined ? undefined : Math.round(parsed);
+};
+
+const getVehicleLabel = (vehicle) => {
+  const make = vehicle?.make || '';
+  const model = vehicle?.model || '';
+  const label = `${make} ${model}`.trim();
+  return label || 'Pojazd';
+};
+
+const buildLogContext = (vehicle, user) => {
+  const rawId = vehicle?.id ?? vehicle?.vehicle_id;
+  return {
+    vehicleId: rawId !== undefined && rawId !== null ? String(rawId) : null,
+    vehicleLabel: getVehicleLabel(vehicle),
+    targetUserId: vehicle?.current_driver_id || user?.id || null,
+  };
+};
+
 export default function VehiclesPage({ role = 'admin', user }) {
   const isAdmin = role === 'admin';
   const canLogUsage = role === 'admin' || role === 'worker';
@@ -199,10 +220,16 @@ export default function VehiclesPage({ role = 'admin', user }) {
       showBanner('error', 'Podaj prawidłowy dystans (km).');
       return;
     }
+    const { vehicleId, vehicleLabel, targetUserId } = buildLogContext(vehicle, user);
+    if (!vehicleId || !targetUserId) {
+      showBanner('error', 'Brakuje danych pojazdu lub pracownika do zapisania przejazdu.');
+      return;
+    }
     try {
       await dashboardApi.createTripLog({
-        vehicle_id: vehicle.id,
-        vehicle_label: `${vehicle.make} ${vehicle.model}`,
+        user_id: targetUserId,
+        vehicle_id: vehicleId,
+        vehicle_label: vehicleLabel,
         route_label: form.route_label,
         distance_km: distanceValue,
         fuel_used_l: parseNumber(form.fuel_used_l),
@@ -226,15 +253,21 @@ export default function VehiclesPage({ role = 'admin', user }) {
       showBanner('error', 'Podaj prawidłową ilość paliwa (L).');
       return;
     }
+    const { vehicleId, vehicleLabel, targetUserId } = buildLogContext(vehicle, user);
+    if (!vehicleId || !targetUserId) {
+      showBanner('error', 'Brakuje danych pojazdu lub pracownika do zapisania tankowania.');
+      return;
+    }
     try {
       await dashboardApi.createFuelLog({
-        vehicle_id: vehicle.id,
-        vehicle_label: `${vehicle.make} ${vehicle.model}`,
+        user_id: targetUserId,
+        vehicle_id: vehicleId,
+        vehicle_label: vehicleLabel,
         liters: litersValue,
         price_per_liter: parseNumber(form.price_per_liter),
         total_cost: parseNumber(form.total_cost),
         station: form.station,
-        odometer: parseNumber(form.odometer),
+        odometer: parseInteger(form.odometer),
         notes: form.notes,
       });
       setFuelForms((prev) => ({ ...prev, [vehicle.id]: createFuelForm() }));
@@ -370,32 +403,154 @@ export default function VehiclesPage({ role = 'admin', user }) {
                 <div className="col-12 col-xxl-4">
                   <h5 className="h6 mb-3">Zapisz przejazd</h5>
                   <form onSubmit={(event) => handleTripSubmit(event, vehicle)} className="d-flex flex-column gap-2">
-                    <input type="text" className="form-control" placeholder="Trasa / klient" value={tripForm.route_label} onChange={(e) => handleTripChange(vehicle.id, 'route_label', e.target.value)} />
-                    <div className="d-flex gap-2">
-                      <input type="number" className="form-control" placeholder="km" value={tripForm.distance_km} onChange={(e) => handleTripChange(vehicle.id, 'distance_km', e.target.value)} required />
-                      <input type="number" className="form-control" placeholder="Koszt paliwa" value={tripForm.fuel_cost} onChange={(e) => handleTripChange(vehicle.id, 'fuel_cost', e.target.value)} />
+                    <div>
+                      <label className="form-label small text-muted">Trasa / klient</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="np. Warszawa → Łódź"
+                        title="Podaj nazwę trasy lub klienta"
+                        value={tripForm.route_label}
+                        onChange={(e) => handleTripChange(vehicle.id, 'route_label', e.target.value)}
+                      />
                     </div>
-                    <div className="d-flex gap-2">
-                      <input type="number" className="form-control" placeholder="Zużycie (L)" value={tripForm.fuel_used_l} onChange={(e) => handleTripChange(vehicle.id, 'fuel_used_l', e.target.value)} />
-                      <input type="number" className="form-control" placeholder="Opłaty" value={tripForm.tolls_cost} onChange={(e) => handleTripChange(vehicle.id, 'tolls_cost', e.target.value)} />
+                    <div className="row g-2">
+                      <div className="col">
+                        <label className="form-label small text-muted">Dystans (km)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder="120"
+                          title="Dystans przejazdu w kilometrach"
+                          value={tripForm.distance_km}
+                          onChange={(e) => handleTripChange(vehicle.id, 'distance_km', e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="col">
+                        <label className="form-label small text-muted">Koszt paliwa (PLN)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder="150"
+                          title="Łączny koszt paliwa"
+                          value={tripForm.fuel_cost}
+                          onChange={(e) => handleTripChange(vehicle.id, 'fuel_cost', e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <textarea className="form-control" placeholder="Notatki" rows="2" value={tripForm.notes} onChange={(e) => handleTripChange(vehicle.id, 'notes', e.target.value)}></textarea>
+                    <div className="row g-2">
+                      <div className="col">
+                        <label className="form-label small text-muted">Zużycie paliwa (L)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder="10"
+                          title="Ile paliwa zostało zużyte"
+                          value={tripForm.fuel_used_l}
+                          onChange={(e) => handleTripChange(vehicle.id, 'fuel_used_l', e.target.value)}
+                        />
+                      </div>
+                      <div className="col">
+                        <label className="form-label small text-muted">Inne opłaty (PLN)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder="25"
+                          title="Np. opłaty za autostrady"
+                          value={tripForm.tolls_cost}
+                          onChange={(e) => handleTripChange(vehicle.id, 'tolls_cost', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="form-label small text-muted">Notatki</label>
+                      <textarea
+                        className="form-control"
+                        rows="2"
+                        placeholder="Dodaj ważne informacje, np. klient odmówił podpisu"
+                        title="Dowolne uwagi dotyczące przejazdu"
+                        value={tripForm.notes}
+                        onChange={(e) => handleTripChange(vehicle.id, 'notes', e.target.value)}
+                      ></textarea>
+                    </div>
                     <button type="submit" className="btn btn-primary btn-sm">Zapisz przejazd</button>
                   </form>
                 </div>
                 <div className="col-12 col-xxl-4">
                   <h5 className="h6 mb-3">Zgłoś tankowanie</h5>
                   <form onSubmit={(event) => handleFuelSubmit(event, vehicle)} className="d-flex flex-column gap-2">
-                    <div className="d-flex gap-2">
-                      <input type="number" className="form-control" placeholder="Litry" value={fuelForm.liters} onChange={(e) => handleFuelChange(vehicle.id, 'liters', e.target.value)} required />
-                      <input type="number" className="form-control" placeholder="Cena/L" value={fuelForm.price_per_liter} onChange={(e) => handleFuelChange(vehicle.id, 'price_per_liter', e.target.value)} />
+                    <div className="row g-2">
+                      <div className="col">
+                        <label className="form-label small text-muted">Ilość paliwa (L)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder="45"
+                          title="Ile litrów zostało zatankowanych"
+                          value={fuelForm.liters}
+                          onChange={(e) => handleFuelChange(vehicle.id, 'liters', e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="col">
+                        <label className="form-label small text-muted">Cena za litr (PLN)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder="6.20"
+                          title="Średnia cena paliwa"
+                          value={fuelForm.price_per_liter}
+                          onChange={(e) => handleFuelChange(vehicle.id, 'price_per_liter', e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <div className="d-flex gap-2">
-                      <input type="number" className="form-control" placeholder="Koszt całkowity" value={fuelForm.total_cost} onChange={(e) => handleFuelChange(vehicle.id, 'total_cost', e.target.value)} />
-                      <input type="number" className="form-control" placeholder="Przebieg" value={fuelForm.odometer} onChange={(e) => handleFuelChange(vehicle.id, 'odometer', e.target.value)} />
+                    <div className="row g-2">
+                      <div className="col">
+                        <label className="form-label small text-muted">Koszt całkowity (PLN)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder="280"
+                          title="Suma do zapłaty"
+                          value={fuelForm.total_cost}
+                          onChange={(e) => handleFuelChange(vehicle.id, 'total_cost', e.target.value)}
+                        />
+                      </div>
+                      <div className="col">
+                        <label className="form-label small text-muted">Stan licznika (km)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder="15200"
+                          title="Przebieg pojazdu podczas tankowania"
+                          value={fuelForm.odometer}
+                          onChange={(e) => handleFuelChange(vehicle.id, 'odometer', e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <input type="text" className="form-control" placeholder="Stacja" value={fuelForm.station} onChange={(e) => handleFuelChange(vehicle.id, 'station', e.target.value)} />
-                    <textarea className="form-control" placeholder="Notatki" rows="2" value={fuelForm.notes} onChange={(e) => handleFuelChange(vehicle.id, 'notes', e.target.value)}></textarea>
+                    <div>
+                      <label className="form-label small text-muted">Stacja / lokalizacja</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="np. Orlen, Łódź"
+                        title="Gdzie odbyło się tankowanie"
+                        value={fuelForm.station}
+                        onChange={(e) => handleFuelChange(vehicle.id, 'station', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label small text-muted">Notatki</label>
+                      <textarea
+                        className="form-control"
+                        rows="2"
+                        placeholder="Np. płatność kartą firmową"
+                        title="Dowolne dodatkowe informacje"
+                        value={fuelForm.notes}
+                        onChange={(e) => handleFuelChange(vehicle.id, 'notes', e.target.value)}
+                      ></textarea>
+                    </div>
                     <button type="submit" className="btn btn-outline-primary btn-sm">Zapisz tankowanie</button>
                   </form>
                 </div>
