@@ -5,7 +5,7 @@ export default function LoginPanel({ role, onRoleChange, onLogin, loading, error
 
   useEffect(() => {
     if (session.status !== "authenticated") {
-      setCredentials({ username: role === "admin" ? "admin" : "user", password: role === "admin" ? "admin" : "user" });
+      setCredentials({ username: role === "admin" ? "admin@fleetify.io" : "REDACTED@firma.pl", password: role === "admin" ? "adminadmin" : "REDACTED" });
     }
   }, [role, session.status]);
 

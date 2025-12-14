@@ -47,7 +47,7 @@ export default function DashboardPage({ session, data, onLogout, onRefresh }) {
           <EmployeeDashboard data={data} user={session.user} onLogout={onLogout} showLogoutButton={false} />
         );
       case "vehicles":
-        return <VehiclesPage />;
+        return <VehiclesPage role={session.user.role} user={session.user} />;
       case "team":
         return <TeamPage />;
       case "employees":

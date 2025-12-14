@@ -4,14 +4,25 @@ const handleResponse = async (response, errorMessage) => {
 	if (!response.ok) {
 		throw new Error(errorMessage);
 	}
-	return response.json();
+	if (response.status === 204) {
+		return null;
+	}
+	const text = await response.text();
+	return text ? JSON.parse(text) : null;
+};
+
+const buildQuery = (params = {}) => {
+	const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "");
+	if (!entries.length) return "";
+	const query = new URLSearchParams(Object.fromEntries(entries)).toString();
+	return query ? `?${query}` : "";
 };
 
 export const dashboardApi = {
 	fetchAdmin: async (params = {}) => {
-		const query = new URLSearchParams(params).toString();
+		const query = buildQuery(params);
 		const response = await fetch(
-			`${API_BASE_URL}/api/dashboard/admin${query ? `?${query}` : ""}`,
+			`${API_BASE_URL}/api/dashboard/admin${query}`,
 			{
 				method: "GET",
 				headers: getDefaultHeaders(),
@@ -21,9 +32,9 @@ export const dashboardApi = {
 	},
 
 	fetchEmployee: async (params = {}) => {
-		const query = new URLSearchParams(params).toString();
+		const query = buildQuery(params);
 		const response = await fetch(
-			`${API_BASE_URL}/api/dashboard/employee${query ? `?${query}` : ""}`,
+			`${API_BASE_URL}/api/dashboard/employee${query}`,
 			{
 				method: "GET",
 				headers: getDefaultHeaders(),
@@ -33,9 +44,9 @@ export const dashboardApi = {
 	},
 
 	fetchVehiclesSnapshot: async (params = {}) => {
-		const query = new URLSearchParams(params).toString();
+		const query = buildQuery(params);
 		const response = await fetch(
-			`${API_BASE_URL}/api/dashboard/vehicles${query ? `?${query}` : ""}`,
+			`${API_BASE_URL}/api/dashboard/vehicles${query}`,
 			{
 				method: "GET",
 				headers: getDefaultHeaders(),
@@ -50,6 +61,14 @@ export const dashboardApi = {
 			headers: getDefaultHeaders(),
 		});
 		return handleResponse(response, "Failed to load vehicles");
+	},
+
+	fetchMyVehicles: async () => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/me`, {
+			method: "GET",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to load assigned vehicles");
 	},
 
 	addVehicle: async (vehicleData) => {
@@ -93,6 +112,24 @@ export const dashboardApi = {
 			body: JSON.stringify(assignmentData),
 		});
 		return handleResponse(response, "Failed to assign task");
+	},
+
+	assignVehicle: async (payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/assignments/vehicle`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to assign vehicle");
+	},
+
+	assignTasks: async (payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/assignments/tasks`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to assign tasks");
 	},
 
 	fetchNotifications: async () => {
@@ -146,5 +183,101 @@ export const dashboardApi = {
 			body: JSON.stringify(data),
 		});
 		return handleResponse(response, "Failed to update vehicle status");
+	},
+
+	listTripLogs: async (params = {}) => {
+		const query = buildQuery(params);
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/trips${query}`, {
+			method: "GET",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to load trip logs");
+	},
+
+	createTripLog: async (payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/trips`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to create trip log");
+	},
+
+	updateTripLog: async (tripId, payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/trips/${tripId}`, {
+			method: "PUT",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to update trip log");
+	},
+
+	deleteTripLog: async (tripId) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/trips/${tripId}`, {
+			method: "DELETE",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to delete trip log");
+	},
+
+	listFuelLogs: async (params = {}) => {
+		const query = buildQuery(params);
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/fuel-logs${query}`, {
+			method: "GET",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to load fuel logs");
+	},
+
+	createFuelLog: async (payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/fuel-logs`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to create fuel log");
+	},
+
+	updateFuelLog: async (logId, payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/fuel-logs/${logId}`, {
+			method: "PUT",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to update fuel log");
+	},
+
+	deleteFuelLog: async (logId) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/fuel-logs/${logId}`, {
+			method: "DELETE",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to delete fuel log");
+	},
+
+	fetchVehicleIssues: async (vehicleId) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/${vehicleId}/issues`, {
+			method: "GET",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to load vehicle issues");
+	},
+
+	reportVehicleIssue: async (vehicleId, payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/${vehicleId}/issues`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to report vehicle issue");
+	},
+
+	updateVehicleIssue: async (vehicleId, issueId, payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/${vehicleId}/issues/${issueId}`, {
+			method: "PATCH",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to update vehicle issue");
 	},
 };
