@@ -132,6 +132,7 @@ async def get_admin_dashboard(authorization: str = Header(None)):
                 "status": v["status"],
                 "location": "Unknown", # Location not yet tracked
                 "battery": v.get("battery_level", 0) if v.get("fuel_type") in ["electric", "hybrid"] else v.get("fuel_level", 0),
+                "fuel_level": v.get("fuel_level", 0),
                 "fuel_type": v.get("fuel_type", "gasoline")
             })
     except Exception as e:

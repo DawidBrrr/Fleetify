@@ -12,12 +12,17 @@ function StatCard({ label, value, delta, tone = "info" }) {
 
 function FleetRow({ item }) {
   const statusMap = {
-    'available': 'Dostępny',
-    'in_use': 'W użyciu',
-    'maintenance': 'W serwisie'
+    available: "Dostępny",
+    in_use: "W użyciu",
+    maintenance: "W serwisie",
   };
   const statusLabel = statusMap[item.status] || item.status;
-  const statusClass = item.status === 'available' ? 'success' : (item.status === 'maintenance' ? 'danger' : 'warning');
+  const statusClass =
+    item.status === "available" ? "success" : item.status === "maintenance" ? "danger" : "warning";
+
+  const isElectric = item.fuel_type === "electric";
+  const isHybrid = item.fuel_type === "hybrid";
+  const showBattery = isElectric || isHybrid;
 
   return (
     <tr>
@@ -28,19 +33,37 @@ function FleetRow({ item }) {
       </td>
       <td>{item.location}</td>
       <td>
-        {item.battery !== undefined ? (
+        {showBattery ? (
           <div className="d-flex align-items-center gap-2">
             <div className="progress flex-grow-1" style={{ height: "6px", width: "60px" }}>
-              <div 
-                className={`progress-bar bg-${item.battery > 20 ? 'success' : 'danger'}`} 
-                role="progressbar" 
-                style={{ width: `${item.battery}%` }}
+              <div
+                className={`progress-bar bg-${item.battery > 20 ? "success" : "danger"}`}
+                role="progressbar"
+                style={{ width: `${item.battery ?? 0}%` }}
               ></div>
             </div>
-            <span className="small">{item.battery}%</span>
-            <span className="text-muted small" style={{fontSize: '0.7em'}}>({item.fuel_type === 'electric' ? 'EV' : (item.fuel_type === 'hybrid' ? 'HEV' : 'ICE')})</span>
+            <span className="small">{item.battery ?? 0}%</span>
+            <span className="text-muted small" style={{ fontSize: "0.7em" }}>
+              ({isElectric ? "EV" : "HEV"})
+            </span>
           </div>
-        ) : "—"}
+        ) : item.fuel_level !== undefined ? (
+          <div className="d-flex align-items-center gap-2">
+            <div className="progress flex-grow-1" style={{ height: "6px", width: "60px" }}>
+              <div
+                className={`progress-bar bg-${item.fuel_level > 20 ? "success" : "danger"}`}
+                role="progressbar"
+                style={{ width: `${item.fuel_level}%` }}
+              ></div>
+            </div>
+            <span className="small">{item.fuel_level}%</span>
+            <span className="text-muted small" style={{ fontSize: "0.7em" }}>
+              ({item.fuel_type?.toUpperCase() || "ICE"})
+            </span>
+          </div>
+        ) : (
+          "—"
+        )}
       </td>
     </tr>
   );
@@ -111,7 +134,7 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                     <th>Model</th>
                     <th>Status</th>
                     <th>Lokalizacja</th>
-                    <th>Poziom baterii</th>
+                    <th>Energia / Paliwo</th>
                   </tr>
                 </thead>
                 <tbody>
