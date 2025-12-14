@@ -13,3 +13,4 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@vehicle-db:
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
+VEHICLE_EVENT_QUEUE = os.getenv("VEHICLE_EVENT_QUEUE", "vehicle_events")

@@ -229,6 +229,10 @@ body {
   box-shadow: 12px 0 40px rgba(0, 0, 0, 0.3);
 }
 
+.dashboard-sidebar .text-muted {
+  color: rgba(247, 251, 255, 0.85) !important;
+}
+
 .sidebar-link {
   background: transparent;
   border: none;

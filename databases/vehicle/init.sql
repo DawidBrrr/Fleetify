@@ -24,3 +24,16 @@ CREATE TABLE vehicle_logs (
     description TEXT,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE vehicle_issues (
+    id SERIAL PRIMARY KEY,
+    vehicle_id INTEGER REFERENCES vehicles(id) ON DELETE CASCADE,
+    reporter_id VARCHAR(50),
+    severity VARCHAR(20) DEFAULT 'medium',
+    title VARCHAR(120) NOT NULL,
+    description TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'open',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP WITH TIME ZONE
+);

@@ -1,9 +1,9 @@
-from fastapi import FastAPI, HTTPException, Header, Body
+from fastapi import FastAPI, HTTPException, Header, Body, status
 from pydantic import BaseModel
 import asyncio
 import httpx
 import threading
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from app.messaging import consume_messages
 
@@ -16,6 +16,11 @@ from config import (
 )
 
 app = FastAPI(title="Dashboard Service")
+
+
+def build_query(params: Dict[str, Optional[Any]]) -> str:
+    query = [f"{key}={value}" for key, value in params.items() if value is not None]
+    return f"?{'&'.join(query)}" if query else ""
 
 
 class VehicleCreate(BaseModel):
@@ -66,39 +71,51 @@ async def startup_event():
 def health_check():
     return {"status": "healthy", "service": "dashboard-service"}
 
-async def fetch_data(url: str, endpoint: str, authorization: str = None):
+async def _request_service(
+    method: str,
+    url: str,
+    endpoint: str,
+    authorization: Optional[str] = None,
+    data: Optional[dict] = None,
+    error_context: str = "requesting",
+):
     headers = {}
     if authorization:
         headers["Authorization"] = authorization
-        
+
     async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
-            response = await client.get(f"{url}{endpoint}", headers=headers)
+            response = await client.request(method, f"{url}{endpoint}", json=data, headers=headers)
             response.raise_for_status()
+            if response.status_code == status.HTTP_204_NO_CONTENT or not response.content:
+                return None
             return response.json()
         except httpx.RequestError as exc:
             print(f"An error occurred while requesting {exc.request.url!r}.")
             raise HTTPException(status_code=503, detail=f"Service unavailable: {url}")
         except httpx.HTTPStatusError as exc:
             print(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}.")
-            raise HTTPException(status_code=exc.response.status_code, detail="Error fetching data")
+            raise HTTPException(status_code=exc.response.status_code, detail=f"Error {error_context} data")
+
+
+async def fetch_data(url: str, endpoint: str, authorization: str = None):
+    return await _request_service("GET", url, endpoint, authorization, None, "fetching")
+
 
 async def post_data(url: str, endpoint: str, data: dict, authorization: str = None):
-    headers = {}
-    if authorization:
-        headers["Authorization"] = authorization
-        
-    async with httpx.AsyncClient(follow_redirects=True) as client:
-        try:
-            response = await client.post(f"{url}{endpoint}", json=data, headers=headers)
-            response.raise_for_status()
-            return response.json()
-        except httpx.RequestError as exc:
-            print(f"An error occurred while requesting {exc.request.url!r}.")
-            raise HTTPException(status_code=503, detail=f"Service unavailable: {url}")
-        except httpx.HTTPStatusError as exc:
-            print(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}.")
-            raise HTTPException(status_code=exc.response.status_code, detail="Error posting data")
+    return await _request_service("POST", url, endpoint, authorization, data, "posting")
+
+
+async def put_data(url: str, endpoint: str, data: dict, authorization: str = None):
+    return await _request_service("PUT", url, endpoint, authorization, data, "updating")
+
+
+async def patch_data(url: str, endpoint: str, data: dict, authorization: str = None):
+    return await _request_service("PATCH", url, endpoint, authorization, data, "updating")
+
+
+async def delete_data(url: str, endpoint: str, authorization: str = None):
+    return await _request_service("DELETE", url, endpoint, authorization, None, "deleting")
 
 
 async def send_service_notification(payload: dict):
@@ -119,41 +136,65 @@ async def get_admin_dashboard(authorization: str = Header(None)):
     stats = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/stats", authorization)
     costs = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/costs", authorization)
     alerts = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/alerts", authorization)
+    recent_trips = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/trips?limit=5", authorization)
+    recent_fuel_logs = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/fuel-logs?limit=5", authorization)
     
     # Fetch real vehicles from Vehicle Service instead of Analytics Service mock
     try:
         vehicles = await fetch_data(VEHICLE_SERVICE_URL, "/vehicles/", authorization)
         # Transform vehicle data to match fleet health format if needed
         fleet_health = []
+        issue_summary = {"open": 0, "byVehicle": []}
         for v in vehicles:
+            issues = v.get("issues") or []
+            open_count = sum(1 for issue in issues if issue.get("status") != "resolved")
             fleet_health.append({
                 "id": v["id"],
                 "model": f"{v['make']} {v['model']}",
                 "status": v["status"],
                 "location": "Unknown", # Location not yet tracked
                 "battery": v.get("battery_level", 0) if v.get("fuel_type") in ["electric", "hybrid"] else v.get("fuel_level", 0),
-                "fuel_type": v.get("fuel_type", "gasoline")
+                "fuel_level": v.get("fuel_level", 0),
+                "fuel_type": v.get("fuel_type", "gasoline"),
+                "last_service_date": v.get("last_service_date"),
+                "open_issues": open_count,
             })
+            if open_count:
+                issue_summary["open"] += open_count
+                issue_summary["byVehicle"].append(
+                    {
+                        "vehicle_id": v["id"],
+                        "vehicle_label": f"{v['make']} {v['model']}",
+                        "open_issues": open_count,
+                        "last_service_date": v.get("last_service_date"),
+                    }
+                )
     except Exception as e:
         print(f"Failed to fetch vehicles for fleet health: {e}")
         fleet_health = []
+        issue_summary = {"open": 0, "byVehicle": []}
 
     return {
         "stats": stats,
         "costBreakdown": costs,
         "alerts": alerts,
-        "fleetHealth": fleet_health
+        "fleetHealth": fleet_health,
+        "recentTrips": recent_trips,
+        "recentFuelLogs": recent_fuel_logs,
+        "issueSummary": issue_summary,
     }
 
 @app.get("/dashboard/employee")
 async def get_employee_dashboard(authorization: str = Header(None)):
     assignment = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/employee/assignment", authorization)
     trips = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/employee/trips", authorization)
+    fuel_logs = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/employee/fuel-logs", authorization)
     reminders = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/employee/reminders", authorization)
 
     return {
         "assignment": assignment,
-        "trips": trips,
+        "tripLogs": trips,
+        "fuelLogs": fuel_logs,
         "reminders": reminders
     }
 
@@ -174,6 +215,37 @@ async def get_stats(authorization: str = Header(None)):
 @app.get("/dashboard/vehicles")
 async def get_vehicles(authorization: str = Header(None)):
     return await fetch_data(VEHICLE_SERVICE_URL, "/vehicles/", authorization)
+
+
+@app.get("/dashboard/vehicles/me")
+async def get_my_vehicles(authorization: str = Header(None)):
+    assignment = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/employee/assignment", authorization)
+    if not assignment or not assignment.get("vehicle"):
+        return []
+    vehicle_id = assignment["vehicle"].get("id")
+    if vehicle_id:
+        try:
+            vehicle = await fetch_data(VEHICLE_SERVICE_URL, f"/vehicles/{vehicle_id}", authorization)
+            return [vehicle]
+        except HTTPException:
+            pass
+
+    vehicle_fallback = assignment["vehicle"]
+    return [
+        {
+            "id": vehicle_fallback.get("id"),
+            "make": (vehicle_fallback.get("model") or "Pojazd").split(" ")[0],
+            "model": vehicle_fallback.get("model"),
+            "vin": vehicle_fallback.get("vin"),
+            "status": "assigned",
+            "fuel_type": "gasoline",
+            "fuel_level": vehicle_fallback.get("battery") or 0,
+            "battery_level": vehicle_fallback.get("battery"),
+            "odometer": vehicle_fallback.get("mileage"),
+            "issues": [],
+            "last_service_date": None,
+        }
+    ]
 
 @app.post("/dashboard/vehicles")
 async def add_vehicle(vehicle: VehicleCreate, authorization: str = Header(None)):
@@ -242,14 +314,149 @@ async def create_assignment(assignment: AssignmentCreate, authorization: str = H
         print(f"Failed to push task notification: {exc}")
     return result
 
+
+@app.post("/dashboard/assignments/vehicle")
+async def assign_vehicle(assignment: dict = Body(...), authorization: str = Header(None)):
+    result = await post_data(
+        ANALYTICS_SERVICE_URL,
+        "/analytics/admin/assignments/vehicle",
+        assignment,
+        authorization,
+    )
+    vehicle_id = assignment.get("vehicle_id")
+    if vehicle_id:
+        update_payload = {
+            "status": "assigned",
+            "current_driver_id": assignment.get("user_id"),
+        }
+        try:
+            await put_data(
+                VEHICLE_SERVICE_URL,
+                f"/vehicles/{vehicle_id}",
+                update_payload,
+                authorization,
+            )
+        except HTTPException as exc:
+            print(f"Failed to update vehicle status during assignment: {exc.detail}")
+    return result
+
+
+@app.post("/dashboard/assignments/tasks")
+async def assign_tasks(payload: dict = Body(...), authorization: str = Header(None)):
+    return await post_data(ANALYTICS_SERVICE_URL, "/analytics/admin/assignments/tasks", payload, authorization)
+
 @app.post("/dashboard/employee/tasks/update")
 async def update_task_status(update: TaskUpdate, authorization: str = Header(None)):
     return await post_data(ANALYTICS_SERVICE_URL, "/analytics/employee/tasks/update", update.dict(), authorization)
 
 @app.post("/dashboard/employee/vehicle/return")
 async def return_vehicle(authorization: str = Header(None)):
-    return await post_data(ANALYTICS_SERVICE_URL, "/analytics/employee/vehicle/return", {}, authorization)
+    result = await post_data(
+        ANALYTICS_SERVICE_URL,
+        "/analytics/employee/vehicle/return",
+        {},
+        authorization,
+    )
+    vehicle_id = result.get("vehicle_id") if isinstance(result, dict) else None
+    if vehicle_id:
+        try:
+            await put_data(
+                VEHICLE_SERVICE_URL,
+                f"/vehicles/{vehicle_id}",
+                {"status": "available", "current_driver_id": None},
+                authorization,
+            )
+        except HTTPException as exc:
+            print(f"Failed to reset vehicle status on return: {exc.detail}")
+    return result
 
 @app.post("/dashboard/employee/vehicle/update")
 async def update_vehicle_status(update: VehicleUpdate, authorization: str = Header(None)):
     return await post_data(ANALYTICS_SERVICE_URL, "/analytics/employee/vehicle/update", update.dict(), authorization)
+
+
+@app.get("/dashboard/trips")
+async def list_trips(
+    user_id: Optional[str] = None,
+    limit: Optional[int] = None,
+    authorization: str = Header(None),
+):
+    query = build_query({"user_id": user_id, "limit": limit})
+    return await fetch_data(ANALYTICS_SERVICE_URL, f"/analytics/trips{query}", authorization)
+
+
+@app.post("/dashboard/trips")
+async def create_trip_log(payload: Dict[str, Any] = Body(...), authorization: str = Header(None)):
+    return await post_data(ANALYTICS_SERVICE_URL, "/analytics/trips", payload, authorization)
+
+
+@app.put("/dashboard/trips/{trip_id}")
+async def update_trip_log_endpoint(
+    trip_id: int,
+    payload: Dict[str, Any] = Body(...),
+    authorization: str = Header(None),
+):
+    return await put_data(ANALYTICS_SERVICE_URL, f"/analytics/trips/{trip_id}", payload, authorization)
+
+
+@app.delete("/dashboard/trips/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_trip_log_endpoint(trip_id: int, authorization: str = Header(None)):
+    await delete_data(ANALYTICS_SERVICE_URL, f"/analytics/trips/{trip_id}", authorization)
+
+
+@app.get("/dashboard/fuel-logs")
+async def list_fuel_logs(
+    user_id: Optional[str] = None,
+    limit: Optional[int] = None,
+    authorization: str = Header(None),
+):
+    query = build_query({"user_id": user_id, "limit": limit})
+    return await fetch_data(ANALYTICS_SERVICE_URL, f"/analytics/fuel-logs{query}", authorization)
+
+
+@app.post("/dashboard/fuel-logs")
+async def create_fuel_log(payload: Dict[str, Any] = Body(...), authorization: str = Header(None)):
+    return await post_data(ANALYTICS_SERVICE_URL, "/analytics/fuel-logs", payload, authorization)
+
+
+@app.put("/dashboard/fuel-logs/{log_id}")
+async def update_fuel_log_endpoint(
+    log_id: int,
+    payload: Dict[str, Any] = Body(...),
+    authorization: str = Header(None),
+):
+    return await put_data(ANALYTICS_SERVICE_URL, f"/analytics/fuel-logs/{log_id}", payload, authorization)
+
+
+@app.delete("/dashboard/fuel-logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_fuel_log_endpoint(log_id: int, authorization: str = Header(None)):
+    await delete_data(ANALYTICS_SERVICE_URL, f"/analytics/fuel-logs/{log_id}", authorization)
+
+
+@app.get("/dashboard/vehicles/{vehicle_id}/issues")
+async def list_vehicle_issues_endpoint(vehicle_id: int, authorization: str = Header(None)):
+    return await fetch_data(VEHICLE_SERVICE_URL, f"/vehicles/{vehicle_id}/issues", authorization)
+
+
+@app.post("/dashboard/vehicles/{vehicle_id}/issues")
+async def create_vehicle_issue_endpoint(
+    vehicle_id: int,
+    payload: Dict[str, Any] = Body(...),
+    authorization: str = Header(None),
+):
+    return await post_data(VEHICLE_SERVICE_URL, f"/vehicles/{vehicle_id}/issues", payload, authorization)
+
+
+@app.patch("/dashboard/vehicles/{vehicle_id}/issues/{issue_id}")
+async def update_vehicle_issue_endpoint(
+    vehicle_id: int,
+    issue_id: int,
+    payload: Dict[str, Any] = Body(...),
+    authorization: str = Header(None),
+):
+    return await patch_data(
+        VEHICLE_SERVICE_URL,
+        f"/vehicles/{vehicle_id}/issues/{issue_id}",
+        payload,
+        authorization,
+    )
