@@ -259,6 +259,22 @@ class InviteUserView(views.APIView):
         )
 
 
+class UserDetailView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id, role="employee")
+        except User.DoesNotExist:
+            return response.Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.manager_id != request.user.id:
+            return response.Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        assign_manager(user, None, status="pending")
+        return response.Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class AdminListInternalView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [ServiceTokenPermission]

@@ -105,6 +105,14 @@ export const dashboardApi = {
 		return handleResponse(response, "Failed to invite employee");
 	},
 
+	removeEmployee: async (employeeId) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/employees/${employeeId}`, {
+			method: "DELETE",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to remove employee");
+	},
+
 	assignTask: async (assignmentData) => {
 		const response = await fetch(`${API_BASE_URL}/api/dashboard/assignments`, {
 			method: "POST",

@@ -278,12 +278,13 @@ def list_trip_logs(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    target = resolve_target_user(current_user, user_id)
-    query = (
-        db.query(models.TripLog)
-        .filter(models.TripLog.user_id == target)
-        .order_by(models.TripLog.created_at.desc())
-    )
+    query = db.query(models.TripLog)
+    if user_id:
+        target = resolve_target_user(current_user, user_id)
+        query = query.filter(models.TripLog.user_id == target)
+    elif current_user.get("role") != "admin":
+        query = query.filter(models.TripLog.user_id == current_user["id"])
+    query = query.order_by(models.TripLog.created_at.desc())
     if limit:
         query = query.limit(limit)
     logs = query.all()
@@ -364,12 +365,13 @@ def list_fuel_logs(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    target = resolve_target_user(current_user, user_id)
-    query = (
-        db.query(models.FuelLog)
-        .filter(models.FuelLog.user_id == target)
-        .order_by(models.FuelLog.created_at.desc())
-    )
+    query = db.query(models.FuelLog)
+    if user_id:
+        target = resolve_target_user(current_user, user_id)
+        query = query.filter(models.FuelLog.user_id == target)
+    elif current_user.get("role") != "admin":
+        query = query.filter(models.FuelLog.user_id == current_user["id"])
+    query = query.order_by(models.FuelLog.created_at.desc())
     if limit:
         query = query.limit(limit)
     logs = query.all()
