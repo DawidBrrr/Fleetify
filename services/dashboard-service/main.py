@@ -289,6 +289,12 @@ async def respond_notification(notification_id: str, payload: NotificationRespon
 async def invite_employee(invite: UserInvite, authorization: str = Header(None)):
     return await post_data(USER_MANAGEMENT_URL, "/api/users/invite", invite.dict(), authorization)
 
+
+@app.delete("/dashboard/employees/{user_id}")
+async def remove_employee(user_id: str, authorization: str = Header(None)):
+    await delete_data(USER_MANAGEMENT_URL, f"/api/users/{user_id}", authorization)
+    return {"status": "removed"}
+
 @app.post("/dashboard/assignments")
 async def create_assignment(assignment: AssignmentCreate, authorization: str = Header(None)):
     result = await post_data(ANALYTICS_SERVICE_URL, "/analytics/admin/assignments", assignment.dict(), authorization)
