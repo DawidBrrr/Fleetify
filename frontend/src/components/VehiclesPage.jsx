@@ -82,7 +82,7 @@ const buildLogContext = (vehicle, user) => {
 
 export default function VehiclesPage({ role = 'admin', user }) {
   const isAdmin = role === 'admin';
-  const canLogUsage = role === 'admin' || role === 'worker';
+  const canLogUsage = role === 'admin' || role === 'worker' || role === 'employee';
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
