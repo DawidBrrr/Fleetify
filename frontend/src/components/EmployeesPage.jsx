@@ -15,7 +15,7 @@ function PresenceBadge({ state }) {
   return <span className={`badge bg-${mapping.className}`}>{mapping.label}</span>;
 }
 
-function EmployeeCard({ employee, onAssign }) {
+function EmployeeCard({ employee, onAssign, onRemove }) {
   return (
     <div className="card h-100 shadow-sm border-0">
       <div className="card-body">
@@ -37,10 +37,29 @@ function EmployeeCard({ employee, onAssign }) {
           )}
           <small className="text-muted ms-auto">Dołączył: {new Date(employee.created_at).toLocaleDateString()}</small>
         </div>
-        <button className="btn btn-sm btn-outline-primary w-100" onClick={() => onAssign(employee)}>
-          <i className="bi bi-clipboard-check me-2"></i>
-          Przydziel Zadania
-        </button>
+        <div className="d-flex flex-column gap-2">
+          <button
+            className="btn btn-sm btn-outline-primary w-100"
+            onClick={() => onAssign(employee, 'vehicle')}
+          >
+            <i className="bi bi-car-front me-2"></i>
+            Przydziel Pojazd
+          </button>
+          <button
+            className="btn btn-sm btn-outline-secondary w-100"
+            onClick={() => onAssign(employee, 'tasks')}
+          >
+            <i className="bi bi-clipboard-check me-2"></i>
+            Przydziel Zadanie
+          </button>
+          <button
+            className="btn btn-sm btn-outline-danger w-100"
+            onClick={() => onRemove(employee)}
+          >
+            <i className="bi bi-person-dash me-2"></i>
+            Usuń z zespołu
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -66,6 +85,7 @@ export default function EmployeesPage() {
   const [newTask, setNewTask] = useState('');
   const [assigningVehicle, setAssigningVehicle] = useState(false);
   const [savingTasks, setSavingTasks] = useState(false);
+  const [assignmentMode, setAssignmentMode] = useState('vehicle');
 
   useEffect(() => {
     loadData();
@@ -100,9 +120,10 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleAssignClick = (employee) => {
+  const handleAssignClick = (employee, mode = 'vehicle') => {
     setSelectedEmployee(employee);
     setAssignmentData({ vehicle_id: '', tasks: [] });
+    setAssignmentMode(mode);
     setShowAssignForm(true);
   };
 
@@ -183,6 +204,25 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleRemoveEmployee = async (employee) => {
+    if (!window.confirm(`Czy na pewno chcesz usunąć ${employee.full_name} z zespołu?`)) {
+      return;
+    }
+    try {
+      await dashboardApi.removeEmployee(employee.id);
+      alert('Pracownik został usunięty z zespołu.');
+      if (selectedEmployee?.id === employee.id) {
+        setShowAssignForm(false);
+        setSelectedEmployee(null);
+        setAssignmentMode('vehicle');
+      }
+      loadData();
+    } catch (error) {
+      console.error('Failed to remove employee:', error);
+      alert('Nie udało się usunąć pracownika');
+    }
+  };
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -254,60 +294,89 @@ export default function EmployeesPage() {
       {showAssignForm && selectedEmployee && (
         <div className="card mb-4 border-0 shadow-sm bg-light">
           <div className="card-body p-4">
-            <h5 className="mb-3">Przydziel Zadania dla: {selectedEmployee.full_name}</h5>
+            <h5 className="mb-3">Przydział dla: {selectedEmployee.full_name}</h5>
+            <div className="btn-group mb-4" role="group" aria-label="tryb przydziału">
+              <button
+                type="button"
+                className={`btn btn-sm ${assignmentMode === 'vehicle' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => setAssignmentMode('vehicle')}
+              >
+                Przydziel Pojazd
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${assignmentMode === 'tasks' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => setAssignmentMode('tasks')}
+              >
+                Przydziel Zadanie
+              </button>
+            </div>
             <div className="row g-4">
-              <div className="col-md-5">
-                <form onSubmit={handleVehicleAssignment}>
-                  <label className="form-label">Wybierz Pojazd</label>
-                  <select 
-                    className="form-select mb-3"
-                    value={assignmentData.vehicle_id}
-                    onChange={(e) => setAssignmentData({...assignmentData, vehicle_id: e.target.value})}
-                    required
-                  >
-                    <option value="">-- Wybierz pojazd --</option>
-                    {vehicles.map(v => (
-                      <option key={v.id} value={v.id}>
-                        {v.make} {v.model} ({v.license_plate})
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" className="btn btn-outline-primary w-100" disabled={assigningVehicle}>
-                    {assigningVehicle ? 'Zapisywanie...' : 'Zapisz przydział pojazdu'}
-                  </button>
-                </form>
-              </div>
-              <div className="col-md-7">
-                <form onSubmit={handleTasksAssignment}>
-                  <label className="form-label">Lista Zadań</label>
-                  <div className="input-group mb-2">
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="Nowe zadanie..." 
-                      value={newTask}
-                      onChange={(e) => setNewTask(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())}
-                    />
-                    <button className="btn btn-outline-secondary" type="button" onClick={handleAddTask}>Dodaj</button>
-                  </div>
-                  <ul className="list-group mb-3">
-                    {assignmentData.tasks.map(task => (
-                      <li key={task.id} className="list-group-item d-flex justify-content-between align-items-center">
-                        {task.label}
-                        <button type="button" className="btn-close btn-sm" onClick={() => handleRemoveTask(task.id)}></button>
-                      </li>
-                    ))}
-                    {assignmentData.tasks.length === 0 && <li className="list-group-item text-muted fst-italic">Brak zadań</li>}
-                  </ul>
-                  <button type="submit" className="btn btn-primary" disabled={savingTasks}>
-                    {savingTasks ? 'Zapisywanie...' : 'Zapisz zadania'}
-                  </button>
-                </form>
-              </div>
+              {assignmentMode === 'vehicle' && (
+                <div className="col-12 col-lg-5">
+                  <form onSubmit={handleVehicleAssignment}>
+                    <label className="form-label">Wybierz Pojazd</label>
+                    <select 
+                      className="form-select mb-3"
+                      value={assignmentData.vehicle_id}
+                      onChange={(e) => setAssignmentData({...assignmentData, vehicle_id: e.target.value})}
+                      required
+                    >
+                      <option value="">-- Wybierz pojazd --</option>
+                      {vehicles.map(v => (
+                        <option key={v.id} value={v.id}>
+                          {v.make} {v.model} ({v.license_plate})
+                        </option>
+                      ))}
+                    </select>
+                    <button type="submit" className="btn btn-outline-primary w-100" disabled={assigningVehicle}>
+                      {assigningVehicle ? 'Zapisywanie...' : 'Zapisz przydział pojazdu'}
+                    </button>
+                  </form>
+                </div>
+              )}
+              {assignmentMode === 'tasks' && (
+                <div className="col-12 col-lg-7">
+                  <form onSubmit={handleTasksAssignment}>
+                    <label className="form-label">Lista Zadań</label>
+                    <div className="input-group mb-2">
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        placeholder="Nowe zadanie..." 
+                        value={newTask}
+                        onChange={(e) => setNewTask(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())}
+                      />
+                      <button className="btn btn-outline-secondary" type="button" onClick={handleAddTask}>Dodaj</button>
+                    </div>
+                    <ul className="list-group mb-3">
+                      {assignmentData.tasks.map(task => (
+                        <li key={task.id} className="list-group-item d-flex justify-content-between align-items-center">
+                          {task.label}
+                          <button type="button" className="btn-close btn-sm" onClick={() => handleRemoveTask(task.id)}></button>
+                        </li>
+                      ))}
+                      {assignmentData.tasks.length === 0 && <li className="list-group-item text-muted fst-italic">Brak zadań</li>}
+                    </ul>
+                    <button type="submit" className="btn btn-primary" disabled={savingTasks}>
+                      {savingTasks ? 'Zapisywanie...' : 'Zapisz zadania'}
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
             <div className="text-end mt-3">
-              <button type="button" className="btn btn-link text-muted" onClick={() => setShowAssignForm(false)}>Zamknij</button>
+              <button
+                type="button"
+                className="btn btn-link text-muted"
+                onClick={() => {
+                  setShowAssignForm(false);
+                  setAssignmentMode('vehicle');
+                }}
+              >
+                Zamknij
+              </button>
             </div>
           </div>
         </div>
@@ -316,7 +385,7 @@ export default function EmployeesPage() {
       <div className="row g-4">
         {employees.map(employee => (
           <div key={employee.id} className="col-md-6 col-lg-4">
-            <EmployeeCard employee={employee} onAssign={handleAssignClick} />
+            <EmployeeCard employee={employee} onAssign={handleAssignClick} onRemove={handleRemoveEmployee} />
           </div>
         ))}
         {employees.length === 0 && (
