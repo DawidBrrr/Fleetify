@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from database import Base
 
@@ -98,3 +99,15 @@ class FuelLog(Base):
     odometer = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PrecomputedChart(Base):
+    """Cache dla wykresów - przeliczane w tle"""
+    __tablename__ = "precomputed_charts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chart_type = Column(String(50), nullable=False)
+    vehicle_id = Column(String(50), nullable=True)
+    period_days = Column(Integer, default=30)
+    data_json = Column(JSONB, nullable=False)
+    computed_at = Column(DateTime(timezone=True), server_default=func.now())
