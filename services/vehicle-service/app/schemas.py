@@ -50,6 +50,9 @@ class VehicleBase(BaseModel):
     fuel_capacity: Optional[float] = None
     battery_level: Optional[int] = None
     odometer: Optional[int] = 0
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    city: Optional[str] = None
     last_service_date: Optional[datetime] = None
     current_driver_id: Optional[str] = None
 
@@ -63,6 +66,9 @@ class VehicleUpdate(BaseModel):
     fuel_capacity: Optional[float] = None
     battery_level: Optional[int] = None
     odometer: Optional[int] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    city: Optional[str] = None
     last_service_date: Optional[datetime] = None
     current_driver_id: Optional[str] = None
 
@@ -71,6 +77,7 @@ class Vehicle(VehicleBase):
     created_at: datetime
     updated_at: datetime
     issues: List[VehicleIssue] = Field(default_factory=list)
+    city: Optional[str] = None
 
     class Config:
         orm_mode = True

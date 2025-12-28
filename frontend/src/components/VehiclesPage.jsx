@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { dashboardApi } from '../services/api/dashboard';
 
 const statusLabels = {
@@ -71,6 +71,18 @@ const getVehicleLabel = (vehicle) => {
   return label || 'Pojazd';
 };
 
+const formatLocationLabel = (vehicle) => {
+  if (vehicle?.city) return vehicle.city;
+  const hasLatLng =
+    vehicle && vehicle.latitude !== undefined && vehicle.latitude !== null && vehicle.longitude !== undefined && vehicle.longitude !== null;
+  if (hasLatLng) {
+    const lat = Number(vehicle.latitude).toFixed(4);
+    const lng = Number(vehicle.longitude).toFixed(4);
+    return `${lat}, ${lng}`;
+  }
+  return 'Brak lokalizacji';
+};
+
 const buildLogContext = (vehicle, user) => {
   const rawId = vehicle?.id ?? vehicle?.vehicle_id;
   return {
@@ -79,6 +91,31 @@ const buildLogContext = (vehicle, user) => {
     targetUserId: vehicle?.current_driver_id || user?.id || null,
   };
 };
+
+const loadLeaflet = (() => {
+  let promise;
+  return () => {
+    if (typeof window !== 'undefined' && window.L) return Promise.resolve(window.L);
+    if (promise) return promise;
+    promise = new Promise((resolve, reject) => {
+      const cssId = 'leaflet-css';
+      if (!document.getElementById(cssId)) {
+        const link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      script.onload = () => resolve(window.L);
+      script.onerror = reject;
+      document.body.appendChild(script);
+    });
+    return promise;
+  };
+})();
 
 export default function VehiclesPage({ role = 'admin', user }) {
   const isAdmin = role === 'admin';
@@ -105,6 +142,11 @@ export default function VehiclesPage({ role = 'admin', user }) {
   const [fuelForms, setFuelForms] = useState({});
   const [issueForms, setIssueForms] = useState({});
   const [banner, setBanner] = useState(null);
+  const [locationModalVehicle, setLocationModalVehicle] = useState(null);
+  const [locationForms, setLocationForms] = useState({});
+  const [locationLookups, setLocationLookups] = useState({});
+  const mapRefs = useRef({});
+  const markerRefs = useRef({});
 
   useEffect(() => {
     loadVehicles();
@@ -113,6 +155,103 @@ export default function VehiclesPage({ role = 'admin', user }) {
   const showBanner = (type, message) => {
     setBanner({ type, message });
     setTimeout(() => setBanner(null), 3500);
+  };
+
+  const setLocationFormValues = (vehicleId, updates) => {
+    setLocationForms((prev) => ({
+      ...prev,
+      [vehicleId]: {
+        ...(prev[vehicleId] || {}),
+        ...updates,
+      },
+    }));
+  };
+
+  const extractCityName = (address = {}) => {
+    return (
+      address.city ||
+      address.town ||
+      address.village ||
+      address.municipality ||
+      address.hamlet ||
+      address.county ||
+      null
+    );
+  };
+
+  const updateMapView = (vehicleId, lat, lng) => {
+    const map = mapRefs.current[vehicleId];
+    const marker = markerRefs.current[vehicleId];
+    if (map && typeof lat === 'number' && typeof lng === 'number') {
+      map.setView([lat, lng], Math.max(map.getZoom(), 11));
+    }
+    if (map && typeof lat === 'number' && typeof lng === 'number') {
+      if (marker) {
+        marker.setLatLng([lat, lng]);
+      } else if (window.L) {
+        markerRefs.current[vehicleId] = window.L.marker([lat, lng]).addTo(map);
+      }
+    }
+  };
+
+  const reverseGeocodeLocation = async (vehicleId, lat, lng) => {
+    if (lat === undefined || lng === undefined || Number.isNaN(lat) || Number.isNaN(lng)) {
+      return;
+    }
+    setLocationLookups((prev) => ({ ...prev, [vehicleId]: 'loading' }));
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=pl&zoom=10`,
+        { headers: { Accept: 'application/json' } }
+      );
+      const data = await response.json();
+      const cityName = extractCityName(data?.address || {}) || (data?.display_name || '').split(',')[0] || '';
+      setLocationFormValues(vehicleId, {
+        latitude: Number(lat.toFixed ? lat.toFixed(6) : lat),
+        longitude: Number(lng.toFixed ? lng.toFixed(6) : lng),
+        city: cityName || (locationForms[vehicleId]?.city || ''),
+      });
+      setLocationLookups((prev) => ({ ...prev, [vehicleId]: cityName ? 'ready' : 'no-city' }));
+    } catch (error) {
+      console.error('Reverse geocoding failed', error);
+      setLocationLookups((prev) => ({ ...prev, [vehicleId]: 'error' }));
+    }
+  };
+
+  const handleSearchCity = async (vehicleId) => {
+    const query = (locationForms[vehicleId]?.city || '').trim();
+    if (!query) {
+      showBanner('error', 'Podaj nazwę miasta, aby wyszukać.');
+      return;
+    }
+    setLocationLookups((prev) => ({ ...prev, [vehicleId]: 'searching' }));
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(query)}`,
+        { headers: { Accept: 'application/json' } }
+      );
+      const results = await response.json();
+      const place = Array.isArray(results) ? results[0] : null;
+      if (!place) {
+        showBanner('error', 'Nie znaleziono takiej miejscowości.');
+        setLocationLookups((prev) => ({ ...prev, [vehicleId]: 'not-found' }));
+        return;
+      }
+      const lat = Number.parseFloat(place.lat);
+      const lng = Number.parseFloat(place.lon);
+      const cityName = extractCityName(place.address || {}) || (place.display_name || '').split(',')[0] || query;
+      setLocationFormValues(vehicleId, {
+        latitude: Number(lat.toFixed(6)),
+        longitude: Number(lng.toFixed(6)),
+        city: cityName,
+      });
+      updateMapView(vehicleId, lat, lng);
+      setLocationLookups((prev) => ({ ...prev, [vehicleId]: 'ready' }));
+    } catch (error) {
+      console.error('City search failed', error);
+      showBanner('error', 'Nie udało się wyszukać miasta.');
+      setLocationLookups((prev) => ({ ...prev, [vehicleId]: 'error' }));
+    }
   };
 
   const loadVehicles = async () => {
@@ -297,6 +436,89 @@ export default function VehiclesPage({ role = 'admin', user }) {
     }
   };
 
+  const openLocationModal = (vehicle) => {
+    const lat = vehicle.latitude ?? 52.2297;
+    const lng = vehicle.longitude ?? 21.0122;
+    setLocationFormValues(vehicle.id, {
+      latitude: lat,
+      longitude: lng,
+      city: vehicle.city || '',
+    });
+    setLocationModalVehicle(vehicle);
+    setTimeout(() => initializeMap(vehicle.id, lat, lng), 0);
+    if (!vehicle.city && vehicle.latitude !== undefined && vehicle.longitude !== undefined) {
+      reverseGeocodeLocation(vehicle.id, vehicle.latitude, vehicle.longitude);
+    }
+  };
+
+  const initializeMap = async (vehicleId, lat, lng) => {
+    try {
+      const L = await loadLeaflet();
+      const containerId = `vehicle-map-${vehicleId}`;
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      if (mapRefs.current[vehicleId]) {
+        mapRefs.current[vehicleId].off();
+        mapRefs.current[vehicleId].remove();
+      }
+      const map = L.map(containerId).setView([lat, lng], 12);
+      mapRefs.current[vehicleId] = map;
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(map);
+      markerRefs.current[vehicleId] = L.marker([lat, lng]).addTo(map);
+      map.on('click', (e) => {
+        const { lat: newLat, lng: newLng } = e.latlng;
+        setLocationFormValues(vehicleId, {
+          latitude: Number(newLat.toFixed(6)),
+          longitude: Number(newLng.toFixed(6)),
+        });
+        if (markerRefs.current[vehicleId]) {
+          markerRefs.current[vehicleId].setLatLng([newLat, newLng]);
+        }
+        reverseGeocodeLocation(vehicleId, Number(newLat), Number(newLng));
+      });
+    } catch (err) {
+      console.error('Failed to load map', err);
+    }
+  };
+
+  const handleLocationInput = (vehicleId, field, value) => {
+    setLocationForms((prev) => {
+      const next = { ...(prev[vehicleId] || {}), [field]: value };
+      const latNum = parseNumber(next.latitude);
+      const lngNum = parseNumber(next.longitude);
+      if (latNum !== undefined && lngNum !== undefined && (field === 'latitude' || field === 'longitude')) {
+        updateMapView(vehicleId, latNum, lngNum);
+      }
+      return { ...prev, [vehicleId]: next };
+    });
+  };
+
+  const handleSaveLocation = async () => {
+    if (!locationModalVehicle) return;
+    const form = locationForms[locationModalVehicle.id] || {};
+    const lat = parseNumber(form.latitude);
+    const lng = parseNumber(form.longitude);
+    if (lat === undefined || lng === undefined) {
+      showBanner('error', 'Podaj prawidłowe współrzędne.');
+      return;
+    }
+    try {
+      await dashboardApi.updateVehicleLocation(locationModalVehicle.id, {
+        latitude: lat,
+        longitude: lng,
+        city: (form.city || '').trim() || null,
+      });
+      showBanner('success', 'Lokalizacja pojazdu zaktualizowana');
+      setLocationModalVehicle(null);
+      loadVehicles();
+    } catch (error) {
+      console.error('Failed to update location', error);
+      showBanner('error', 'Nie udało się zapisać lokalizacji');
+    }
+  };
+
   const handleResolveIssue = async (vehicleId, issueId) => {
     try {
       await dashboardApi.updateVehicleIssue(vehicleId, issueId, {
@@ -387,6 +609,9 @@ export default function VehiclesPage({ role = 'admin', user }) {
           </span>
           <span className="small text-muted" title={`Ostatni serwis: ${formatDate(vehicle.last_service_date)}`}>
             <i className="bi bi-tools me-1"></i>Serwis: {formatDate(vehicle.last_service_date)}
+          </span>
+          <span className="small text-muted" title={`Lokalizacja: ${formatLocationLabel(vehicle)}`}>
+            <i className="bi bi-geo-alt me-1"></i>{formatLocationLabel(vehicle)}
           </span>
           <span className="small text-muted" title={energyLabel}>
             <i className="bi bi-thermometer-half me-1"></i>{energyLabel}
@@ -568,6 +793,15 @@ export default function VehiclesPage({ role = 'admin', user }) {
                     <button type="submit" className="btn btn-danger btn-sm">Zgłoś problem</button>
                   </form>
                 </div>
+                <div className="col-12">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={() => openLocationModal(vehicle)}
+                  >
+                    <i className="bi bi-geo-alt me-2"></i>Zmień lokalizację
+                  </button>
+                </div>
               </div>
             )}
             <div className="mt-4">
@@ -693,6 +927,76 @@ export default function VehiclesPage({ role = 'admin', user }) {
           </div>
         )}
       </div>
+
+      {locationModalVehicle && (
+        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Zmień lokalizację: {getVehicleLabel(locationModalVehicle)}</h5>
+                <button type="button" className="btn-close" onClick={() => setLocationModalVehicle(null)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="row g-3">
+                  <div className="col-12 col-lg-8">
+                    <div
+                      id={`vehicle-map-${locationModalVehicle.id}`}
+                      style={{ height: '360px', borderRadius: '8px', overflow: 'hidden', background: '#f3f3f3' }}
+                    ></div>
+                  </div>
+                  <div className="col-12 col-lg-4">
+                    <label className="form-label">Miasto / miejscowość</label>
+                    <div className="input-group mb-2">
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="np. Warszawa"
+                        value={locationForms[locationModalVehicle.id]?.city ?? ''}
+                        onChange={(e) => handleLocationInput(locationModalVehicle.id, 'city', e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary"
+                        onClick={() => handleSearchCity(locationModalVehicle.id)}
+                      >
+                        Znajdź
+                      </button>
+                    </div>
+                    <div className="small text-muted mb-2">
+                      {locationLookups[locationModalVehicle.id] === 'loading' && 'Wyszukiwanie najbliższego miasta...'}
+                      {locationLookups[locationModalVehicle.id] === 'searching' && 'Wyszukiwanie lokalizacji...'}
+                      {locationLookups[locationModalVehicle.id] === 'ready' && 'Miasto zaktualizowane.'}
+                      {locationLookups[locationModalVehicle.id] === 'not-found' && 'Nie znaleziono miejscowości.'}
+                      {locationLookups[locationModalVehicle.id] === 'error' && 'Błąd podczas pobierania lokalizacji.'}
+                    </div>
+                    <label className="form-label">Szerokość geograficzna</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      className="form-control mb-2"
+                      value={locationForms[locationModalVehicle.id]?.latitude ?? ''}
+                      onChange={(e) => handleLocationInput(locationModalVehicle.id, 'latitude', e.target.value)}
+                    />
+                    <label className="form-label">Długość geograficzna</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      className="form-control mb-3"
+                      value={locationForms[locationModalVehicle.id]?.longitude ?? ''}
+                      onChange={(e) => handleLocationInput(locationModalVehicle.id, 'longitude', e.target.value)}
+                    />
+                    <p className="text-muted small mb-3">Kliknij na mapę, aby ustawić pinezkę — najbliższa miejscowość zostanie dobrana automatycznie. Możesz też wpisać współrzędne lub wyszukać miasto ręcznie.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setLocationModalVehicle(null)}>Anuluj</button>
+                <button type="button" className="btn btn-primary" onClick={handleSaveLocation}>Zapisz lokalizację</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
