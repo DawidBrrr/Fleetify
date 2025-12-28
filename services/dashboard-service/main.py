@@ -491,3 +491,95 @@ async def update_vehicle_issue_endpoint(
         payload,
         authorization,
     )
+
+
+# ==================== ANALYTICS CHARTS PROXY ====================
+
+@app.get("/dashboard/charts/fuel-consumption")
+async def proxy_fuel_consumption_chart(
+    days: int = 30,
+    vehicle_id: Optional[str] = None,
+    group_by: str = "day",
+    authorization: str = Header(None),
+):
+    """Proxy do wykresu zużycia paliwa - dane z cache"""
+    query = build_query({"days": days, "vehicle_id": vehicle_id, "group_by": group_by})
+    return await fetch_data(ANALYTICS_SERVICE_URL, f"/analytics/charts/fuel-consumption{query}", authorization)
+
+
+@app.get("/dashboard/charts/cost-breakdown")
+async def proxy_cost_breakdown_chart(
+    days: int = 30,
+    authorization: str = Header(None),
+):
+    """Proxy do wykresu podziału kosztów - dane z cache"""
+    query = build_query({"days": days})
+    return await fetch_data(ANALYTICS_SERVICE_URL, f"/analytics/charts/cost-breakdown{query}", authorization)
+
+
+@app.get("/dashboard/charts/vehicle-mileage")
+async def proxy_vehicle_mileage_chart(
+    days: int = 30,
+    limit: int = 10,
+    authorization: str = Header(None),
+):
+    """Proxy do wykresu przebiegu pojazdów - dane z cache"""
+    query = build_query({"days": days, "limit": limit})
+    return await fetch_data(ANALYTICS_SERVICE_URL, f"/analytics/charts/vehicle-mileage{query}", authorization)
+
+
+@app.get("/dashboard/charts/fuel-efficiency")
+async def proxy_fuel_efficiency_chart(
+    days: int = 30,
+    vehicle_id: Optional[str] = None,
+    authorization: str = Header(None),
+):
+    """Proxy do wykresu efektywności paliwowej - dane z cache"""
+    query = build_query({"days": days, "vehicle_id": vehicle_id})
+    return await fetch_data(ANALYTICS_SERVICE_URL, f"/analytics/charts/fuel-efficiency{query}", authorization)
+
+
+@app.get("/dashboard/charts/cost-trend")
+async def proxy_cost_trend_chart(
+    months: int = 6,
+    vehicle_id: Optional[str] = None,
+    authorization: str = Header(None),
+):
+    """Proxy do wykresu trendu kosztów - dane z cache"""
+    query = build_query({"months": months, "vehicle_id": vehicle_id})
+    return await fetch_data(ANALYTICS_SERVICE_URL, f"/analytics/charts/cost-trend{query}", authorization)
+
+
+@app.get("/dashboard/charts/fleet-summary")
+async def proxy_fleet_summary(authorization: str = Header(None)):
+    """Proxy do podsumowania floty - dane z cache"""
+    return await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/charts/fleet-summary", authorization)
+
+
+@app.get("/dashboard/charts/cost-prediction")
+async def proxy_cost_prediction(
+    history_days: int = 90,
+    predict_days: int = 30,
+    vehicle_id: Optional[str] = None,
+    authorization: str = Header(None),
+):
+    """Proxy do predykcji kosztów"""
+    query = build_query({"history_days": history_days, "predict_days": predict_days, "vehicle_id": vehicle_id})
+    return await fetch_data(ANALYTICS_SERVICE_URL, f"/analytics/charts/cost-prediction{query}", authorization)
+
+
+@app.get("/dashboard/charts/monthly-prediction")
+async def proxy_monthly_prediction(
+    history_months: int = 6,
+    predict_months: int = 3,
+    authorization: str = Header(None),
+):
+    """Proxy do miesięcznej predykcji kosztów"""
+    query = build_query({"history_months": history_months, "predict_months": predict_months})
+    return await fetch_data(ANALYTICS_SERVICE_URL, f"/analytics/charts/monthly-prediction{query}", authorization)
+
+
+@app.get("/dashboard/vehicles-list")
+async def proxy_vehicles_list(authorization: str = Header(None)):
+    """Proxy do listy pojazdów dla filtrów"""
+    return await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/vehicles-list", authorization)

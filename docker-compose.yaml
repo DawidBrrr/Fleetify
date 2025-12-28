@@ -19,6 +19,7 @@ services:
   gateway:
     build:
       context: ./services/nginx-gateway
+      dockerfile: DockerFile
     env_file:
       - services/nginx-gateway/.env
     ports:

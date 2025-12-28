@@ -85,6 +85,18 @@ CREATE TABLE fuel_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Precomputed charts cache (dane przeliczane w tle przez worker)
+CREATE TABLE precomputed_charts (
+    id SERIAL PRIMARY KEY,
+    chart_type VARCHAR(50) NOT NULL,
+    vehicle_id VARCHAR(50),
+    period_days INTEGER DEFAULT 30,
+    data_json JSONB NOT NULL,
+    computed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(chart_type, vehicle_id, period_days)
+);
+CREATE INDEX idx_precomputed_charts_lookup ON precomputed_charts(chart_type, vehicle_id, period_days);
+
 -- Seed data for admin (ID 1)
 -- Note: Since we switched to UUIDs, these integer IDs won't match real users.
 -- They are placeholders. Real users will have empty dashboards initially.

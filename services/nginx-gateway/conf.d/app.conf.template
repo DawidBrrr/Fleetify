@@ -79,6 +79,18 @@ server {
         proxy_pass ${NOTIFICATIONS_SERVICE_URL};
     }
 
+    # Analytics Service - Direct access only for internal endpoints (not charts)
+    # Charts are accessed via /api/dashboard/charts which proxies to analytics
+    # This keeps the architecture: Frontend -> Dashboard -> Analytics
+    location ~ ^/api/analytics/(admin|employee|trips|fuel-logs) {
+        include /etc/nginx/includes/cors.conf;
+        include /etc/nginx/includes/proxy.conf;
+        include /etc/nginx/includes/rate-limit.conf;
+
+        rewrite ^/api/analytics/(.*) /analytics/$1 break;
+        proxy_pass ${ANALYTICS_SERVICE_URL};
+    }
+
     # Catch-all for other API routes to prevent falling back to frontend
     location /api/ {
         default_type application/json;
