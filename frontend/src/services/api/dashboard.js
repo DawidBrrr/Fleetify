@@ -113,6 +113,15 @@ export const dashboardApi = {
 		return handleResponse(response, "Failed to remove employee");
 	},
 
+	updateVehicleLocation: async (vehicleId, payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/${vehicleId}/location`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to update vehicle location");
+	},
+
 	assignTask: async (assignmentData) => {
 		const response = await fetch(`${API_BASE_URL}/api/dashboard/assignments`, {
 			method: "POST",

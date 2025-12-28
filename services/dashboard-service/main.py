@@ -152,7 +152,14 @@ async def get_admin_dashboard(authorization: str = Header(None)):
                 "id": v["id"],
                 "model": f"{v['make']} {v['model']}",
                 "status": v["status"],
-                "location": "Unknown", # Location not yet tracked
+                "location": (
+                    v.get("city")
+                    or (
+                        f"{v.get('latitude'):.4f}, {v.get('longitude'):.4f}"
+                        if v.get("latitude") is not None and v.get("longitude") is not None
+                        else "Unknown"
+                    )
+                ),
                 "battery": v.get("battery_level", 0) if v.get("fuel_type") in ["electric", "hybrid"] else v.get("fuel_level", 0),
                 "fuel_level": v.get("fuel_level", 0),
                 "fuel_type": v.get("fuel_type", "gasoline"),
@@ -250,6 +257,24 @@ async def get_my_vehicles(authorization: str = Header(None)):
 @app.post("/dashboard/vehicles")
 async def add_vehicle(vehicle: VehicleCreate, authorization: str = Header(None)):
     return await post_data(VEHICLE_SERVICE_URL, "/vehicles/", vehicle.dict(), authorization)
+
+
+@app.post("/dashboard/vehicles/{vehicle_id}/location")
+async def update_vehicle_location(
+    vehicle_id: int,
+    payload: Dict[str, Any] = Body(...),
+    authorization: str = Header(None),
+):
+    return await put_data(
+        VEHICLE_SERVICE_URL,
+        f"/vehicles/{vehicle_id}",
+        {
+            "latitude": payload.get("latitude"),
+            "longitude": payload.get("longitude"),
+            "city": payload.get("city"),
+        },
+        authorization,
+    )
 
 @app.get("/dashboard/employees")
 async def get_employees(authorization: str = Header(None)):
