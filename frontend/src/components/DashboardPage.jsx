@@ -5,10 +5,12 @@ import VehiclesPage from "./VehiclesPage";
 import EmployeesPage from "./EmployeesPage";
 import TeamPage from "./TeamPage";
 import NotificationsPage from "./NotificationsPage";
+import AnalyticsPage from "./AnalyticsPage";
 import logo from "../assets/logo.svg";
 
 const ADMIN_NAV = [
   { id: "dashboard", label: "Pulpit", icon: "📊" },
+  { id: "analytics", label: "Analityka", icon: "📈" },
   { id: "vehicles", label: "Pojazdy", icon: "🚗" },
   { id: "employees", label: "Pracownicy", icon: "👥" },
   { id: "notifications", label: "Powiadomienia", icon: "🔔" },
@@ -46,6 +48,8 @@ export default function DashboardPage({ session, data, onLogout, onRefresh }) {
         ) : (
           <EmployeeDashboard data={data} user={session.user} onLogout={onLogout} showLogoutButton={false} />
         );
+      case "analytics":
+        return <AnalyticsPage />;
       case "vehicles":
         return <VehiclesPage role={session.user.role} user={session.user} />;
       case "team":
