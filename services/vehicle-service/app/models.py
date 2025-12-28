@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Float
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -21,6 +21,9 @@ class Vehicle(Base):
     fuel_capacity = Column(Integer, nullable=True) # Liters
     battery_level = Column(Integer, nullable=True) # Percentage, for electric/hybrid
     odometer = Column(Integer, default=0) # km
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    city = Column(String, nullable=True)
     last_service_date = Column(DateTime(timezone=True), nullable=True)
     current_driver_id = Column(String, nullable=True) # User ID
     
