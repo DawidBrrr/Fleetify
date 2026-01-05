@@ -73,7 +73,7 @@ export default function App() {
     }
   };
 
-  const handleRegister = async ({ fullName, email, password, role }) => {
+  const handleRegister = async ({ fullName, email, password, role, subscription_plan }) => {
     setRegisterState({ loading: true, error: "" });
     try {
       const registerData = await authApi.register({
@@ -81,6 +81,7 @@ export default function App() {
         email,
         password,
         role,
+        subscription_plan,
       });
       await startAuthenticatedSession(registerData);
       setRegisterState({ loading: false, error: "" });

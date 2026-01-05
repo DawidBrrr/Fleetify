@@ -6,6 +6,12 @@ from django.utils import timezone
 
 
 class User(models.Model):
+    SUBSCRIPTION_PLANS = [
+        ("1_month", "1_month"),
+        ("6_months", "6_months"),
+        ("2_years", "2_years"),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     password_hash = models.TextField()
@@ -17,6 +23,8 @@ class User(models.Model):
         choices=[("active", "active"), ("disabled", "disabled"), ("pending", "pending")],
     )
     manager = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, db_column="manager_id")
+    subscription_plan = models.CharField(max_length=20, choices=SUBSCRIPTION_PLANS, null=True, blank=True)
+    subscription_active_until = models.DateTimeField(null=True, blank=True)
     last_login_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(default=timezone.now)

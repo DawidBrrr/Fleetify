@@ -5,16 +5,18 @@ CREATE EXTENSION IF NOT EXISTS citext;
 
 -- Core user directory leveraged by the auth microservice
 CREATE TABLE IF NOT EXISTS users (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    email           CITEXT UNIQUE NOT NULL,
-    password_hash   TEXT NOT NULL,
-    full_name       TEXT NOT NULL,
-    role            TEXT NOT NULL CHECK (role IN ('admin', 'employee')),
-    status          TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled', 'pending')),
-    manager_id      UUID REFERENCES users(id),
-    last_login_at   TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email               CITEXT UNIQUE NOT NULL,
+    password_hash       TEXT NOT NULL,
+    full_name           TEXT NOT NULL,
+    role                TEXT NOT NULL CHECK (role IN ('admin', 'employee')),
+    status              TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled', 'pending')),
+    manager_id          UUID REFERENCES users(id),
+    subscription_plan   TEXT CHECK (subscription_plan IN ('1_month', '6_months', '2_years')),
+    subscription_active_until TIMESTAMPTZ,
+    last_login_at       TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS user_sessions (
