@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework import generics, permissions, response, status, views
 
 from .models import User, UserSession, WorkerProfile, ensure_profile_for_user
-from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer, UserInviteSerializer
+from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer, UserInviteSerializer, SubscriptionRenewalSerializer
 
 SESSION_TTL = timedelta(days=7)
 
@@ -315,3 +315,29 @@ class TeamAcceptanceView(views.APIView):
             assign_manager(user, None, status="pending")
 
         return response.Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+
+
+class SubscriptionRenewalView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        
+        # Only admins can have subscriptions
+        if user.role != 'admin':
+            return response.Response(
+                {"detail": "Only admin users can renew subscriptions."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = SubscriptionRenewalSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        updated_user = serializer.update(user, serializer.validated_data)
+        
+        return response.Response(
+            {
+                "detail": "Subscription renewed successfully.",
+                "user": UserSerializer(updated_user).data,
+            },
+            status=status.HTTP_200_OK,
+        )

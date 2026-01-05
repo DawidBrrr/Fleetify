@@ -6,6 +6,8 @@ import EmployeesPage from "./EmployeesPage";
 import TeamPage from "./TeamPage";
 import NotificationsPage from "./NotificationsPage";
 import AnalyticsPage from "./AnalyticsPage";
+import AccountInfo from "./AccountInfo";
+import { authApi } from "../services/api/auth";
 import logo from "../assets/logo.svg";
 
 const ADMIN_NAV = [
@@ -27,6 +29,7 @@ const WORKER_NAV = [
 
 export default function DashboardPage({ session, data, onLogout, onRefresh }) {
   const [activeView, setActiveView] = useState("dashboard");
+  const [showAccountInfo, setShowAccountInfo] = useState(false);
 
   if (!session?.user || !data) return null;
   const isAdmin = session.user.role === "admin";
@@ -37,6 +40,18 @@ export default function DashboardPage({ session, data, onLogout, onRefresh }) {
       onRefresh();
     } else {
       window.location.reload();
+    }
+  };
+
+  const handleSubscriptionUpdate = async (subscriptionPlan) => {
+    try {
+      const result = await authApi.renewSubscription(subscriptionPlan);
+      // Refresh user data
+      handleRefresh();
+      return result;
+    } catch (error) {
+      console.error("Failed to renew subscription:", error);
+      alert("Nie udało się przedłużyć subskrypcji. Spróbuj ponownie.");
     }
   };
 
@@ -70,6 +85,13 @@ export default function DashboardPage({ session, data, onLogout, onRefresh }) {
 
   return (
     <div className="dashboard-page">
+      {showAccountInfo && (
+        <AccountInfo 
+          user={session.user} 
+          onClose={() => setShowAccountInfo(false)}
+          onSubscriptionUpdate={handleSubscriptionUpdate}
+        />
+      )}
       <aside className="dashboard-sidebar">
         <div className="d-flex align-items-center gap-2 mb-4">
           <img src={logo} alt="Fleetify" width="36" height="36" />
@@ -99,7 +121,13 @@ export default function DashboardPage({ session, data, onLogout, onRefresh }) {
           </button>
           <p className="small text-muted mb-1">Zalogowano jako</p>
           <p className="fw-semibold mb-1">{session.user.full_name || session.user.name}</p>
-          <p className="text-muted small mb-3">{session.user.email}</p>
+          <p className="text-muted small mb-2">{session.user.email}</p>
+          <button 
+            className="btn btn-sm btn-outline-light w-100 mb-2" 
+            onClick={() => setShowAccountInfo(true)}
+          >
+            <i className="bi bi-person-circle me-2"></i> Informacje o koncie
+          </button>
           <button className="btn btn-sm btn-outline-light w-100" onClick={onLogout}>
             Wyloguj
           </button>
