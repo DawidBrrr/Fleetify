@@ -171,18 +171,23 @@ class TeamView(views.APIView):
                 .prefetch_related("sessions")
             )
         else:
-            manager = (
-                User.objects.select_related("worker_profile", "admin_profile", "manager")
-                .prefetch_related("sessions")
-                .filter(id=user.manager_id)
-                .first()
-            )
-            teammates_qs = (
-                User.objects.filter(manager_id=user.manager_id)
-                .exclude(id=user.id)
-                .select_related("worker_profile", "admin_profile", "manager")
-                .prefetch_related("sessions")
-            )
+            # If worker has no manager, they have no team
+            if not user.manager_id:
+                manager = None
+                teammates_qs = User.objects.none()
+            else:
+                manager = (
+                    User.objects.select_related("worker_profile", "admin_profile", "manager")
+                    .prefetch_related("sessions")
+                    .filter(id=user.manager_id)
+                    .first()
+                )
+                teammates_qs = (
+                    User.objects.filter(manager_id=user.manager_id)
+                    .exclude(id=user.id)
+                    .select_related("worker_profile", "admin_profile", "manager")
+                    .prefetch_related("sessions")
+                )
 
         return response.Response(
             {
