@@ -1,8 +1,12 @@
 import { useState } from "react";
 import logo from "../assets/logo.svg";
+import PlanSelection from "./PlanSelection";
+import PaymentProcessing from "./PaymentProcessing";
 
 export default function RegisterPage({ onRegister, onBack, loading, error }) {
   const [form, setForm] = useState({ fullName: "", email: "", password: "", role: "employee" });
+  const [step, setStep] = useState("form"); // form, plans, payment
+  const [selectedPlan, setSelectedPlan] = useState(null);
 
   const handleChange = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -11,8 +15,39 @@ export default function RegisterPage({ onRegister, onBack, loading, error }) {
   const handleSubmit = (event) => {
     event.preventDefault();
     if (loading) return;
-    onRegister(form);
+    
+    // If admin, show plan selection
+    if (form.role === "admin") {
+      setStep("plans");
+    } else {
+      // Employees register for free
+      onRegister(form);
+    }
   };
+
+  const handleSelectPlan = (planId) => {
+    setSelectedPlan(planId);
+    setStep("payment");
+  };
+
+  const handlePaymentComplete = () => {
+    setStep("form");
+    // Register with selected plan
+    onRegister({ ...form, subscription_plan: selectedPlan });
+  };
+
+  if (step === "payment") {
+    return <PaymentProcessing onComplete={handlePaymentComplete} />;
+  }
+
+  if (step === "plans") {
+    return (
+      <PlanSelection 
+        onSelectPlan={handleSelectPlan}
+        onBack={() => setStep("form")}
+      />
+    );
+  }
 
   return (
     <div className="min-vh-100 bg-fleet-ice d-flex flex-column">

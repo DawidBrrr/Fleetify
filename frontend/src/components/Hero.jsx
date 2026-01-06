@@ -39,7 +39,7 @@ export default function Hero({ onCTAClick }) {
           </div>
           <div className="col-lg-6">
             <div className="glass-panel rounded-4 p-4 position-relative overflow-hidden">
-              <span className="badge bg-fleet-cyan text-dark mb-3">Nowość 2025</span>
+              <span className="badge bg-fleet-cyan text-dark mb-3">Nowość 2026</span>
               <h3 className="h4 text-white">Asystent decyzji FleetAI</h3>
               <p className="text-white-50">
                 Inteligentne scenariusze wykorzystujące historię kosztów i telemetrii, aby sugerować optymalne działania.

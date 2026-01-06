@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework import generics, permissions, response, status, views
 
 from .models import User, UserSession, WorkerProfile, ensure_profile_for_user
-from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer, UserInviteSerializer
+from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer, UserInviteSerializer, SubscriptionRenewalSerializer
 
 SESSION_TTL = timedelta(days=7)
 
@@ -171,18 +171,23 @@ class TeamView(views.APIView):
                 .prefetch_related("sessions")
             )
         else:
-            manager = (
-                User.objects.select_related("worker_profile", "admin_profile", "manager")
-                .prefetch_related("sessions")
-                .filter(id=user.manager_id)
-                .first()
-            )
-            teammates_qs = (
-                User.objects.filter(manager_id=user.manager_id)
-                .exclude(id=user.id)
-                .select_related("worker_profile", "admin_profile", "manager")
-                .prefetch_related("sessions")
-            )
+            # If worker has no manager, they have no team
+            if not user.manager_id:
+                manager = None
+                teammates_qs = User.objects.none()
+            else:
+                manager = (
+                    User.objects.select_related("worker_profile", "admin_profile", "manager")
+                    .prefetch_related("sessions")
+                    .filter(id=user.manager_id)
+                    .first()
+                )
+                teammates_qs = (
+                    User.objects.filter(manager_id=user.manager_id)
+                    .exclude(id=user.id)
+                    .select_related("worker_profile", "admin_profile", "manager")
+                    .prefetch_related("sessions")
+                )
 
         return response.Response(
             {
@@ -315,3 +320,29 @@ class TeamAcceptanceView(views.APIView):
             assign_manager(user, None, status="pending")
 
         return response.Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+
+
+class SubscriptionRenewalView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        
+        # Only admins can have subscriptions
+        if user.role != 'admin':
+            return response.Response(
+                {"detail": "Only admin users can renew subscriptions."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = SubscriptionRenewalSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        updated_user = serializer.update(user, serializer.validated_data)
+        
+        return response.Response(
+            {
+                "detail": "Subscription renewed successfully.",
+                "user": UserSerializer(updated_user).data,
+            },
+            status=status.HTTP_200_OK,
+        )
