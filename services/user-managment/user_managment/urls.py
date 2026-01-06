@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/auth/register', views.RegisterView.as_view(), name='auth-register'),
     path('api/auth/login', views.LoginView.as_view(), name='auth-login'),
     path('api/auth/logout', views.LogoutView.as_view(), name='auth-logout'),
+    path('api/subscription/renew', views.SubscriptionRenewalView.as_view(), name='subscription-renew'),
     path('api/users/me', views.MeView.as_view(), name='users-me'),
     path('api/users', views.UserListView.as_view(), name='users-list'),
     path('api/users/<uuid:user_id>', views.UserDetailView.as_view(), name='users-detail'),

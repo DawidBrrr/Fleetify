@@ -58,6 +58,8 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "status",
             "manager_id",
+            "subscription_plan",
+            "subscription_active_until",
             "last_login_at",
             "created_at",
             "updated_at",
@@ -85,6 +87,11 @@ class RegistrationSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=255)
     password = serializers.CharField(write_only=True, min_length=6, trim_whitespace=False)
     role = serializers.ChoiceField(choices=[("admin", "admin"), ("employee", "employee")], default="employee")
+    subscription_plan = serializers.ChoiceField(
+        choices=[("1_month", "1_month"), ("6_months", "6_months"), ("2_years", "2_years")],
+        required=False,
+        allow_null=True
+    )
 
     def validate_email(self, value: str) -> str:
         normalized = value.lower()
@@ -97,21 +104,66 @@ class RegistrationSerializer(serializers.Serializer):
         full_name = validated_data['full_name']
         password = validated_data['password']
         role = validated_data['role']
+        subscription_plan = validated_data.get('subscription_plan')
+        
+        # Calculate subscription end date based on plan
+        subscription_active_until = None
+        if role == 'admin' and subscription_plan:
+            from datetime import timedelta
+            now = timezone.now()
+            if subscription_plan == '1_month':
+                subscription_active_until = now + timedelta(days=30)
+            elif subscription_plan == '6_months':
+                subscription_active_until = now + timedelta(days=180)
+            elif subscription_plan == '2_years':
+                subscription_active_until = now + timedelta(days=730)
         
         query = """
-            INSERT INTO users (id, email, full_name, password_hash, role, status, created_at, updated_at)
-            VALUES (gen_random_uuid(), %s, %s, crypt(%s, gen_salt('bf')), %s, 'active', NOW(), NOW())
+            INSERT INTO users (id, email, full_name, password_hash, role, status, subscription_plan, subscription_active_until, created_at, updated_at)
+            VALUES (gen_random_uuid(), %s, %s, crypt(%s, gen_salt('bf')), %s, 'active', %s, %s, NOW(), NOW())
             RETURNING id
         """
         
         with connection.cursor() as cursor:
-            cursor.execute(query, [email, full_name, password, role])
+            cursor.execute(query, [email, full_name, password, role, subscription_plan, subscription_active_until])
             row = cursor.fetchone()
             user_id = row[0]
 
         user = User.objects.get(id=user_id)
         ensure_profile_for_user(user)
         return user
+
+
+class SubscriptionRenewalSerializer(serializers.Serializer):
+    subscription_plan = serializers.ChoiceField(
+        choices=[("1_month", "1_month"), ("6_months", "6_months"), ("2_years", "2_years")]
+    )
+
+    def update(self, instance, validated_data):
+        from datetime import timedelta
+        plan = validated_data['subscription_plan']
+        
+        # Calculate new expiration date
+        now = timezone.now()
+        current_active_until = instance.subscription_active_until
+        
+        # If subscription is still active, extend from current end date, otherwise from now
+        base_date = current_active_until if current_active_until and current_active_until > now else now
+        
+        if plan == '1_month':
+            new_active_until = base_date + timedelta(days=30)
+        elif plan == '6_months':
+            new_active_until = base_date + timedelta(days=180)
+        elif plan == '2_years':
+            new_active_until = base_date + timedelta(days=730)
+        
+        instance.subscription_plan = plan
+        instance.subscription_active_until = new_active_until
+        instance.updated_at = now
+        instance.save(update_fields=['subscription_plan', 'subscription_active_until', 'updated_at'])
+        
+        return instance
+
 
 class UserInviteSerializer(serializers.Serializer):
     email = serializers.EmailField()

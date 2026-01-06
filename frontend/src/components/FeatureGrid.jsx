@@ -7,7 +7,7 @@ export default function FeatureGrid({ cards }) {
           <h2 className="mb-0">Pełna kontrola od onboardingu po serwis</h2>
         </div>
         <p className="text-muted mb-0 max-w-420">
-          Modułowa architektura mikroserwisowa i API-first umożliwiają szybkie dopinanie kolejnych systemów.
+          Dzięki nowoczesnej architekturze wszystkie systemy działają płynnie i są łatwe do integracji.
         </p>
       </div>
       <div className="row g-4">

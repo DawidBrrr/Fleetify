@@ -53,4 +53,13 @@ export const authApi = {
 		});
 		return handleResponse(response, "Failed to fetch user");
 	},
+
+	renewSubscription: async (subscriptionPlan) => {
+		const response = await fetch(`${API_BASE_URL}/api/subscription/renew`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify({ subscription_plan: subscriptionPlan }),
+		});
+		return handleResponse(response, "Subscription renewal failed");
+	},
 };

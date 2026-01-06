@@ -73,29 +73,14 @@ export default function LoginPanel({ role, onRoleChange, onLogin, loading, error
                 Zapomniałem hasła
               </a>
             </div>
-            <div className="col-12 d-flex flex-column flex-sm-row gap-3">
+            <div className="col-12">
               <button
                 type="submit"
-                className="btn btn-lg btn-primary bg-fleet-cyan border-0 flex-fill"
+                className="btn btn-lg btn-primary bg-fleet-cyan border-0 w-100"
                 disabled={loading || disabled}
               >
                 {loading ? "Logowanie..." : disabled ? "Ładowanie..." : "Wejdź do panelu"}
               </button>
-              <button
-                type="button"
-                className="btn btn-lg btn-outline-secondary flex-fill"
-                onClick={() =>
-                  setCredentials({ username: role === "admin" ? "admin" : "user", password: role === "admin" ? "admin" : "user" })
-                }
-                disabled={loading || disabled}
-              >
-                Użyj danych demo
-              </button>
-            </div>
-            <div className="col-12">
-              <p className="text-muted small mb-0">
-                Dane testowe: <strong>admin/admin</strong> dla panelu administratora lub <strong>user/user</strong> dla panelu kierowcy.
-              </p>
             </div>
           </form>
           {error && (
