@@ -182,6 +182,25 @@ services:
     volumes:
       - ./services/notifications-service:/app
 
+  report-service:
+    build:
+      context: ./services/report-service
+    env_file:
+      - services/report-service/.env
+    environment:
+      ANALYTICS_SERVICE_URL: http://analytics-service:8000
+      VEHICLE_SERVICE_URL: http://vehicle-service:8000
+      USER_MANAGEMENT_URL: http://user-management:8000
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+    ports:
+      - "8005:8000"
+    depends_on:
+      - analytics-service
+      - vehicle-service
+      - rabbitmq
+
 volumes:
   frontend_node_modules:
   user-management-data:

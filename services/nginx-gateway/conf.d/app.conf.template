@@ -92,6 +92,15 @@ server {
         proxy_pass ${ANALYTICS_SERVICE_URL};
     }
 
+    # Report Service - PDF Report Generation
+    location ~ ^/api/reports(/.*)?$ {
+        include /etc/nginx/includes/cors.conf;
+        include /etc/nginx/includes/proxy.conf;
+        include /etc/nginx/includes/rate-limit.conf;
+
+        proxy_pass ${REPORT_SERVICE_URL};
+    }
+
     # Catch-all for other API routes to prevent falling back to frontend
     location /api/ {
         default_type application/json;
