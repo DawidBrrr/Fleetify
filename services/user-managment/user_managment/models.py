@@ -161,3 +161,79 @@ class UserSession(models.Model):
         db_table = "user_sessions"
         managed = False
         indexes = [models.Index(fields=["user"], name="idx_user_sessions_user_id")]
+
+
+class LoginAttempt(models.Model):
+    """Track login attempts for account lockout security"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField()
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    success = models.BooleanField(default=False)
+    failure_reason = models.TextField(null=True, blank=True)
+    attempted_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "login_attempts"
+        managed = False
+        ordering = ["-attempted_at"]
+
+    @classmethod
+    def get_recent_failed_attempts(cls, email: str, minutes: int = 15) -> int:
+        """Count failed login attempts in the last N minutes"""
+        cutoff = timezone.now() - timezone.timedelta(minutes=minutes)
+        return cls.objects.filter(
+            email__iexact=email,
+            success=False,
+            attempted_at__gte=cutoff
+        ).count()
+
+    @classmethod
+    def is_account_locked(cls, email: str, max_attempts: int = 5, lockout_minutes: int = 15) -> bool:
+        """Check if account is locked due to too many failed attempts"""
+        return cls.get_recent_failed_attempts(email, lockout_minutes) >= max_attempts
+
+    @classmethod
+    def log_attempt(cls, email: str, success: bool, ip_address: str = None, 
+                    user_agent: str = None, failure_reason: str = None):
+        """Log a login attempt"""
+        cls.objects.create(
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=success,
+            failure_reason=failure_reason
+        )
+
+
+class SecurityAuditLog(models.Model):
+    """Security audit log for tracking important actions"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, 
+                             db_column="user_id", related_name="audit_logs")
+    action = models.TextField()
+    resource_type = models.TextField(null=True, blank=True)
+    resource_id = models.TextField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    details = models.JSONField(default=dict)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "security_audit_log"
+        managed = False
+        ordering = ["-created_at"]
+
+    @classmethod
+    def log(cls, action: str, user=None, resource_type: str = None, resource_id: str = None,
+            ip_address: str = None, user_agent: str = None, details: dict = None):
+        """Create an audit log entry"""
+        cls.objects.create(
+            user=user,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details=details or {}
+        )

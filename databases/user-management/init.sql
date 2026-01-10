@@ -56,3 +56,35 @@ CREATE TABLE IF NOT EXISTS worker_profiles (
 );
 
 CREATE INDEX IF NOT EXISTS idx_worker_profiles_manager_id ON worker_profiles(manager_id);
+
+-- Login attempts tracking for account lockout security
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email           CITEXT NOT NULL,
+    ip_address      INET,
+    user_agent      TEXT,
+    success         BOOLEAN NOT NULL DEFAULT FALSE,
+    failure_reason  TEXT,
+    attempted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_time ON login_attempts(attempted_at);
+
+-- Security audit log for tracking important actions
+CREATE TABLE IF NOT EXISTS security_audit_log (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         UUID REFERENCES users(id) ON DELETE SET NULL,
+    action          TEXT NOT NULL,
+    resource_type   TEXT,
+    resource_id     TEXT,
+    ip_address      INET,
+    user_agent      TEXT,
+    details         JSONB DEFAULT '{}'::jsonb,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_user ON security_audit_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action ON security_audit_log(action);
+CREATE INDEX IF NOT EXISTS idx_audit_log_time ON security_audit_log(created_at);
