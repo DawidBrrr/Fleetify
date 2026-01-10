@@ -12,6 +12,7 @@
 *   ** Cost Control:** Detailed logging for fuel, trips, and tolls with automated cost breakdown charts.
 *   ** Smart Notifications:** Real-time alerts for service requirements, task assignments, and critical vehicle issues via RabbitMQ.
 *   ** Team Management:** Employee onboarding, role assignment, and presence tracking.
+*   ** PDF Reports:** Professional fleet reports with async generation via RabbitMQ queue processing.
 
 ---
 
@@ -27,6 +28,7 @@ Fleetify follows a **Microservices Architecture** containerized with Docker.
 | **Analytics Service** | Python (FastAPI), PostgreSQL | Handles data crunching, cost predictions, and chart generation. |
 | **User Management** | Python (Django), PostgreSQL | Handles Authentication (JWT), user profiles, and team structures. |
 | **Notifications** | Python (FastAPI), RabbitMQ | Async service for processing alerts and delivering messages. |
+| **Report Service** | Java (Spring Boot), RabbitMQ, iText | Async PDF report generation with queue-based processing and professional formatting. |
 | **Gateway** | Nginx | Reverse proxy routing traffic to appropriate services. |
 
 ---
@@ -58,7 +60,7 @@ Fleetify follows a **Microservices Architecture** containerized with Docker.
 
 4.  **Access the Application**
     *   **Frontend:** [http://localhost:5173](http://localhost:5173) 
-    *   **API Gateway:** [http://localhost:8000](http://localhost:8080)
+    *   **API Gateway:** [http://localhost:8080](http://localhost:8080)
 
 ---
 
@@ -81,6 +83,8 @@ Fleetify follows a **Microservices Architecture** containerized with Docker.
 │   ├── analytics-service/   # Data processing & predictions
 │   ├── dashboard-service/   # API Aggregator
 │   ├── notifications-service/ # RabbitMQ consumer
+│   ├── report-service/      # PDF report generation (Java/Spring Boot)
 │   ├── user-managment/      # Django Auth system
 │   └── vehicle-service/     # Vehicle CRUD
 └── docker-compose.yaml      # Orchestration
+```
