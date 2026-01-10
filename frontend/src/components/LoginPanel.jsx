@@ -1,7 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+
+// Helper to detect lockout vs remaining attempts
+function parseLoginError(error) {
+  if (!error) return null;
+  
+  const isLocked = error.toLowerCase().includes('locked') || error.toLowerCase().includes('zablokowane');
+  const attemptsMatch = error.match(/(\d+)\s*(attempts?|prób)/i);
+  const remainingAttempts = attemptsMatch ? parseInt(attemptsMatch[1], 10) : null;
+  
+  return {
+    message: error,
+    isLocked,
+    remainingAttempts,
+  };
+}
 
 export default function LoginPanel({ role, onRoleChange, onLogin, loading, error, session, disabled }) {
   const [credentials, setCredentials] = useState({ username: "admin", password: "admin" });
+
+  // Parse error for special handling
+  const errorInfo = useMemo(() => parseLoginError(error), [error]);
 
   useEffect(() => {
     if (session.status !== "authenticated") {
@@ -83,9 +101,31 @@ export default function LoginPanel({ role, onRoleChange, onLogin, loading, error
               </button>
             </div>
           </form>
-          {error && (
-            <div className="alert alert-danger mt-4 mb-0" role="alert">
-              {error}
+          {errorInfo && (
+            <div className={`alert mt-4 mb-0 ${errorInfo.isLocked ? 'alert-warning' : 'alert-danger'}`} role="alert">
+              {errorInfo.isLocked ? (
+                <div className="d-flex align-items-center gap-2">
+                  <span className="fs-4">🔒</span>
+                  <div>
+                    <strong>Konto tymczasowo zablokowane</strong>
+                    <p className="mb-0 small">{errorInfo.message}</p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div>{errorInfo.message}</div>
+                  {errorInfo.remainingAttempts !== null && errorInfo.remainingAttempts <= 3 && (
+                    <div className="mt-2 d-flex align-items-center gap-2">
+                      <span className="badge bg-warning text-dark">
+                        ⚠️ Pozostało prób: {errorInfo.remainingAttempts}
+                      </span>
+                      <small className="text-muted">
+                        Po {errorInfo.remainingAttempts} nieudanych próbach konto zostanie zablokowane.
+                      </small>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {session.status === "authenticated" && session.user && !error && (
