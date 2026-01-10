@@ -36,6 +36,8 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
   const [localData, setLocalData] = useState(data);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateForm, setUpdateForm] = useState({ mileage: '', energyLevel: '' });
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportProgress, setReportProgress] = useState(null);
 
   useEffect(() => {
     setLocalData(data);
@@ -69,6 +71,38 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
       setLocalData({ ...localData, assignment: null });
     } catch (error) {
       console.error("Failed to return vehicle", error);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    setReportLoading(true);
+    setReportProgress({ status: 'STARTING', progress: 0, message: 'Rozpoczynam generowanie...' });
+    try {
+      const blob = await dashboardApi.generateReportAsync(
+        'trips',
+        null,
+        null,
+        (progress) => setReportProgress(progress)
+      );
+      
+      setReportProgress({ status: 'DOWNLOADING', progress: 100, message: 'Pobieranie...' });
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `raport-przejazdy-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setReportProgress(null);
+    } catch (error) {
+      console.error("Failed to download report", error);
+      alert(error.message || "Nie udało się pobrać raportu. Spróbuj ponownie później.");
+      setReportProgress(null);
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -199,7 +233,30 @@ export default function EmployeeDashboard({ data, user, onLogout, showLogoutButt
           <div className="dashboard-panel">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h3 className="h5 mb-0">Historia tras</h3>
-              <button className="btn btn-sm btn-outline-secondary">Pobierz raport</button>
+              <div className="d-flex gap-2 align-items-center">
+                {reportProgress && (
+                  <span className="text-muted small">
+                    {reportProgress.message} {reportProgress.progress > 0 && `(${reportProgress.progress}%)`}
+                  </span>
+                )}
+                <button 
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={handleDownloadReport}
+                  disabled={reportLoading}
+                >
+                  {reportLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      {reportProgress?.progress || 0}%
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-file-earmark-pdf me-1"></i>
+                      Pobierz raport
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
             <div className="table-responsive">
               <table className="table align-middle mb-0">

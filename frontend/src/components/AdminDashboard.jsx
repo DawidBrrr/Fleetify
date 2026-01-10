@@ -1,3 +1,6 @@
+import React, { useState } from 'react';
+import { dashboardApi } from '../services/api/dashboard';
+
 function StatCard({ label, value, delta, tone = "info" }) {
   return (
     <div className="stat-card h-100">
@@ -102,6 +105,9 @@ function AlertPill({ alert }) {
 }
 
 export default function AdminDashboard({ data, user, onLogout, showLogoutButton = true }) {
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportProgress, setReportProgress] = useState(null);
+
   if (!data) return null;
 
   const costEntries = Object.entries(data.costBreakdown);
@@ -109,6 +115,38 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
   const recentTrips = data.recentTrips || [];
   const recentFuelLogs = data.recentFuelLogs || [];
   const issueSummary = data.issueSummary || { open: 0, byVehicle: [] };
+
+  const handleDownloadFleetReport = async () => {
+    setReportLoading(true);
+    setReportProgress({ status: 'STARTING', progress: 0, message: 'Rozpoczynam generowanie...' });
+    try {
+      const blob = await dashboardApi.generateReportAsync(
+        'fleet-summary',
+        null,
+        null,
+        (progress) => setReportProgress(progress)
+      );
+      
+      setReportProgress({ status: 'DOWNLOADING', progress: 100, message: 'Pobieranie...' });
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `raport-flota-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setReportProgress(null);
+    } catch (error) {
+      console.error("Failed to download report", error);
+      alert(error.message || "Nie udało się pobrać raportu. Spróbuj ponownie później.");
+      setReportProgress(null);
+    } finally {
+      setReportLoading(false);
+    }
+  };
 
   return (
     <div className="section-shell p-4 p-lg-5 dashboard-section">
@@ -150,7 +188,31 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                 <h3 className="h5 mb-1">Zdrowie floty</h3>
                 <p className="text-muted small mb-0">Monitorowane pojazdy z telemetrią na żywo</p>
               </div>
-              <button className="btn btn-sm btn-outline-secondary">Eksportuj CSV</button>
+              <div className="d-flex gap-2 align-items-center">
+                {reportProgress && (
+                  <span className="text-muted small me-2">
+                    {reportProgress.message} {reportProgress.progress > 0 && `(${reportProgress.progress}%)`}
+                  </span>
+                )}
+                <button 
+                  className="btn btn-sm btn-primary"
+                  onClick={handleDownloadFleetReport}
+                  disabled={reportLoading}
+                >
+                  {reportLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      {reportProgress?.progress || 0}%
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-file-earmark-pdf me-1"></i>
+                      Pobierz raport PDF
+                    </>
+                  )}
+                </button>
+                <button className="btn btn-sm btn-outline-secondary">Eksportuj CSV</button>
+              </div>
             </div>
             <div className="table-responsive">
               <table className="table align-middle mb-0">
