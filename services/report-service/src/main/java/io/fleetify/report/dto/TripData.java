@@ -67,6 +67,9 @@ public class TripData {
         @JsonProperty("toll_cost")
         private BigDecimal tollCost;
         
+        @JsonProperty("tolls_cost")
+        private BigDecimal tollsCost;
+        
         private String notes;
     }
 }
