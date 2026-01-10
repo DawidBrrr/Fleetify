@@ -1,12 +1,37 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import logo from "../assets/logo.svg";
 import PlanSelection from "./PlanSelection";
 import PaymentProcessing from "./PaymentProcessing";
+
+// Password validation helper
+function validatePassword(password) {
+  return {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasDigit: /\d/.test(password),
+    hasSpecial: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'`~]/.test(password),
+  };
+}
+
+function PasswordRequirement({ met, label }) {
+  return (
+    <div className={`d-flex align-items-center gap-2 small ${met ? 'text-success' : 'text-muted'}`}>
+      <span>{met ? '✓' : '○'}</span>
+      <span>{label}</span>
+    </div>
+  );
+}
 
 export default function RegisterPage({ onRegister, onBack, loading, error }) {
   const [form, setForm] = useState({ fullName: "", email: "", password: "", role: "employee" });
   const [step, setStep] = useState("form"); // form, plans, payment
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+
+  // Calculate password validation state
+  const passwordValidation = useMemo(() => validatePassword(form.password), [form.password]);
+  const isPasswordValid = Object.values(passwordValidation).every(Boolean);
 
   const handleChange = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -102,13 +127,25 @@ export default function RegisterPage({ onRegister, onBack, loading, error }) {
                     <label className="form-label">Hasło</label>
                     <input
                       type="password"
-                      className="form-control form-control-lg"
+                      className={`form-control form-control-lg ${form.password && (isPasswordValid ? 'is-valid' : 'is-invalid')}`}
                       value={form.password}
                       onChange={handleChange("password")}
-                      placeholder="Minimum 6 znaków"
-                      minLength={6}
+                      onFocus={() => setPasswordFocused(true)}
+                      onBlur={() => setPasswordFocused(false)}
+                      placeholder="Minimum 8 znaków"
+                      minLength={8}
                       required
                     />
+                    {(passwordFocused || form.password) && (
+                      <div className="mt-2 p-2 bg-light rounded border">
+                        <div className="small fw-semibold mb-1">Wymagania hasła:</div>
+                        <PasswordRequirement met={passwordValidation.minLength} label="Minimum 8 znaków" />
+                        <PasswordRequirement met={passwordValidation.hasUppercase} label="Wielka litera (A-Z)" />
+                        <PasswordRequirement met={passwordValidation.hasLowercase} label="Mała litera (a-z)" />
+                        <PasswordRequirement met={passwordValidation.hasDigit} label="Cyfra (0-9)" />
+                        <PasswordRequirement met={passwordValidation.hasSpecial} label="Znak specjalny (!@#$%^&*)" />
+                      </div>
+                    )}
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label">Rola użytkownika</label>

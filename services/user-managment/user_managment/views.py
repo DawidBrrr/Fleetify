@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import secrets
 from datetime import timedelta
 
@@ -10,10 +11,82 @@ from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, permissions, response, status, views
 
-from .models import User, UserSession, WorkerProfile, ensure_profile_for_user
+from .models import User, UserSession, WorkerProfile, LoginAttempt, SecurityAuditLog, ensure_profile_for_user
 from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer, UserInviteSerializer, SubscriptionRenewalSerializer
 
+# Security logger for audit events
+security_logger = logging.getLogger('user_managment.security')
+
 SESSION_TTL = timedelta(days=7)
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_MINUTES = 15
+
+# IP Whitelist for sensitive admin operations (configurable via settings)
+ADMIN_IP_WHITELIST = getattr(settings, 'ADMIN_IP_WHITELIST', [
+    '127.0.0.1',
+    '10.0.0.0/8',
+    '172.16.0.0/12',
+    '192.168.0.0/16',
+])
+
+
+def get_client_ip(request):
+    """Extract client IP from request, considering proxy headers."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+def ip_in_whitelist(ip_address: str, whitelist: list) -> bool:
+    """Check if IP address is in the whitelist (supports CIDR notation)."""
+    import ipaddress
+    
+    try:
+        client_ip = ipaddress.ip_address(ip_address)
+    except ValueError:
+        return False
+    
+    for allowed in whitelist:
+        try:
+            if '/' in allowed:
+                # CIDR notation
+                network = ipaddress.ip_network(allowed, strict=False)
+                if client_ip in network:
+                    return True
+            else:
+                # Single IP
+                if client_ip == ipaddress.ip_address(allowed):
+                    return True
+        except ValueError:
+            continue
+    
+    return False
+
+
+class AdminIPWhitelistPermission(permissions.BasePermission):
+    """
+    Permission class that restricts sensitive admin operations to whitelisted IPs.
+    """
+    message = "Access denied. Your IP address is not authorized for this operation."
+    
+    def has_permission(self, request, view):
+        # Allow if whitelist is empty (disabled)
+        if not ADMIN_IP_WHITELIST:
+            return True
+        
+        client_ip = get_client_ip(request)
+        is_allowed = ip_in_whitelist(client_ip, ADMIN_IP_WHITELIST)
+        
+        if not is_allowed:
+            security_logger.warning(
+                f"Admin action blocked - unauthorized IP: {client_ip}, "
+                f"path: {request.path}, user: {getattr(request.user, 'email', 'anonymous')}"
+            )
+        
+        return is_allowed
 
 
 class ServiceTokenPermission(permissions.BasePermission):
@@ -89,9 +162,72 @@ class LoginView(views.APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        user = authenticate_user(data["email"], data["password"])
+        email = data["email"]
+        
+        ip_address = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
+        
+        # Check if account is locked
+        if LoginAttempt.is_account_locked(email, MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES):
+            LoginAttempt.log_attempt(
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                failure_reason='Account locked due to too many failed attempts'
+            )
+            return response.Response(
+                {"detail": f"Account temporarily locked. Please try again in {LOCKOUT_MINUTES} minutes."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
+        user = authenticate_user(email, data["password"])
+        
         if user is None:
+            # Log failed attempt
+            LoginAttempt.log_attempt(
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                failure_reason='Invalid credentials'
+            )
+            
+            # Check remaining attempts
+            recent_failures = LoginAttempt.get_recent_failed_attempts(email, LOCKOUT_MINUTES)
+            remaining = MAX_LOGIN_ATTEMPTS - recent_failures
+            
+            if remaining <= 0:
+                return response.Response(
+                    {"detail": f"Account temporarily locked. Please try again in {LOCKOUT_MINUTES} minutes."},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+            elif remaining <= 3:
+                return response.Response(
+                    {"detail": f"Invalid credentials. {remaining} attempts remaining before lockout."},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
             return response.Response({"detail": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Log successful attempt
+        LoginAttempt.log_attempt(
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=True
+        )
+        
+        # Create audit log for successful login
+        SecurityAuditLog.log(
+            user=user,
+            action='LOGIN',
+            resource_type='session',
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details={'method': 'password'}
+        )
+        
         session = create_session(user)
         return response.Response(
             {

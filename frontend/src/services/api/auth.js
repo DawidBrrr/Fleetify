@@ -2,7 +2,22 @@ import { API_BASE_URL, getDefaultHeaders } from "../config";
 
 const handleResponse = async (response, errorMessage) => {
 	if (!response.ok) {
-		throw new Error(errorMessage);
+		// Try to extract error detail from response
+		try {
+			const errorData = await response.json();
+			const detail = errorData.detail || errorData.message || errorData.error;
+			if (detail) {
+				const error = new Error(detail);
+				error.status = response.status;
+				error.data = errorData;
+				throw error;
+			}
+		} catch (parseError) {
+			if (parseError.status) throw parseError; // Re-throw if it's our error
+		}
+		const error = new Error(errorMessage);
+		error.status = response.status;
+		throw error;
 	}
 	return response.json();
 };

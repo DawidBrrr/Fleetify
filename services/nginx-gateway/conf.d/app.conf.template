@@ -4,6 +4,9 @@ resolver 127.0.0.11 ipv6=off;
 server {
     listen 8080;
     
+    # Global Security Headers
+    include /etc/nginx/includes/security-headers.conf;
+    
     # Health checks
     location /healthz {
         access_log off;

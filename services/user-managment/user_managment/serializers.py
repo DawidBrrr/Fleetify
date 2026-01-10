@@ -1,3 +1,4 @@
+import re
 import uuid
 
 from django.db import connection
@@ -85,7 +86,7 @@ class SessionSerializer(serializers.Serializer):
 class RegistrationSerializer(serializers.Serializer):
     email = serializers.EmailField()
     full_name = serializers.CharField(max_length=255)
-    password = serializers.CharField(write_only=True, min_length=6, trim_whitespace=False)
+    password = serializers.CharField(write_only=True, min_length=8, trim_whitespace=False)
     role = serializers.ChoiceField(choices=[("admin", "admin"), ("employee", "employee")], default="employee")
     subscription_plan = serializers.ChoiceField(
         choices=[("1_month", "1_month"), ("6_months", "6_months"), ("2_years", "2_years")],
@@ -98,6 +99,39 @@ class RegistrationSerializer(serializers.Serializer):
         if User.objects.filter(email=normalized).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return normalized
+
+    def validate_password(self, value: str) -> str:
+        """
+        Validate password strength:
+        - At least 8 characters (enforced by min_length)
+        - At least one uppercase letter
+        - At least one lowercase letter
+        - At least one digit
+        - At least one special character
+        """
+        errors = []
+        
+        if not re.search(r'[A-Z]', value):
+            errors.append("Password must contain at least one uppercase letter.")
+        
+        if not re.search(r'[a-z]', value):
+            errors.append("Password must contain at least one lowercase letter.")
+        
+        if not re.search(r'\d', value):
+            errors.append("Password must contain at least one digit.")
+        
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;\'`~]', value):
+            errors.append("Password must contain at least one special character (e.g. !@#$*)")
+        
+        # Check for common weak passwords
+        common_passwords = ['password', 'password123', '12345678', 'qwerty123', 'admin123']
+        if value.lower() in common_passwords:
+            errors.append("This password is too common. Please choose a stronger password.")
+        
+        if errors:
+            raise serializers.ValidationError(errors)
+        
+        return value
 
     def create(self, validated_data):
         email = validated_data['email']
