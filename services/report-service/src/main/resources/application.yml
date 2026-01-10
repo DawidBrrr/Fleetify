@@ -1,0 +1,57 @@
+# Report Service Configuration
+server:
+  port: 8000
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: report-service
+  
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+    listener:
+      simple:
+        concurrency: 2
+        max-concurrency: 5
+        prefetch: 1
+
+# Service URLs
+services:
+  analytics:
+    url: ${ANALYTICS_SERVICE_URL:http://analytics-service:8000}
+  vehicle:
+    url: ${VEHICLE_SERVICE_URL:http://vehicle-service:8000}
+  user-management:
+    url: ${USER_MANAGEMENT_URL:http://user-management:8000}
+
+# Report Configuration
+report:
+  templates:
+    path: classpath:reports/
+  output:
+    temp-dir: /tmp/reports
+  queue:
+    name: report_jobs
+    results-exchange: report_results
+
+# Logging
+logging:
+  level:
+    io.fleetify: DEBUG
+    org.springframework.web: INFO
+    org.springframework.amqp: INFO
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
