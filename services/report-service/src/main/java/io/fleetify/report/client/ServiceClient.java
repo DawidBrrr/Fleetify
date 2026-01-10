@@ -122,13 +122,16 @@ public class ServiceClient {
         
         try {
             List<Map<String, Object>> response = vehicleClient.get()
-                    .uri("/vehicles")
+                    .uri("/vehicles/")
                     .header(HttpHeaders.AUTHORIZATION, authorization)
                     .retrieve()
                     .bodyToMono(List.class)
                     .block();
 
-            log.info("Fetched {} vehicles", response != null ? response.size() : 0);
+            log.info("Fetched {} vehicles from service", response != null ? response.size() : 0);
+            if (response != null && !response.isEmpty()) {
+                log.debug("First vehicle data: {}", response.get(0));
+            }
             return mapToVehicleData(response);
         } catch (Exception e) {
             log.error("Failed to fetch vehicles: {}", e.getMessage(), e);
@@ -194,18 +197,19 @@ public class ServiceClient {
         
         List<VehicleData.Vehicle> vehicles = response.stream()
                 .map(v -> VehicleData.Vehicle.builder()
-                        .id(getStringValue(v, "id"))
+                        .id(getStringValue(v, "vehicle_id"))  // vehicle_id from service
                         .vin(getStringValue(v, "vin"))
                         .make(getStringValue(v, "make"))
                         .model(getStringValue(v, "model"))
                         .year(getIntValue(v, "year", 0))
                         .fuelType(getStringValue(v, "fuel_type"))
-                        .mileage(getIntValue(v, "mileage", 0))
+                        .mileage(getIntValue(v, "odometer", 0))  // odometer from service
                         .status(getStringValue(v, "status"))
                         .licensePlate(getStringValue(v, "license_plate"))
                         .build())
                 .toList();
 
+        log.info("Mapped {} vehicles", vehicles.size());
         return VehicleData.builder()
                 .vehicles(vehicles)
                 .totalCount(vehicles.size())
