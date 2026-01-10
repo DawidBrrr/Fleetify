@@ -8,8 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -42,53 +42,76 @@ public class ServiceClient {
     }
 
     /**
-     * Fetch analytics summary from Analytics Service
+     * Fetch analytics summary - aggregates from trips and fuel logs
      */
     public AnalyticsData fetchAnalyticsSummary(String authorization, LocalDate startDate, LocalDate endDate) {
-        log.info("Fetching analytics summary from Analytics Service");
+        log.info("Fetching analytics summary (aggregating trips and fuel logs)");
         
         try {
-            Map<String, Object> response = analyticsClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/analytics/summary")
-                            .queryParamIfPresent("start_date", java.util.Optional.ofNullable(startDate))
-                            .queryParamIfPresent("end_date", java.util.Optional.ofNullable(endDate))
-                            .build())
-                    .header(HttpHeaders.AUTHORIZATION, authorization)
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
-
-            return mapToAnalyticsData(response);
+            // Fetch trips
+            List<Map<String, Object>> trips = fetchTripsRaw(authorization);
+            // Fetch fuel logs
+            List<Map<String, Object>> fuelLogs = fetchFuelLogsRaw(authorization);
+            // Fetch vehicles
+            VehicleData vehicleData = fetchVehicles(authorization);
+            
+            // Aggregate data
+            BigDecimal totalDistance = BigDecimal.ZERO;
+            BigDecimal totalFuelCost = BigDecimal.ZERO;
+            BigDecimal totalTollCost = BigDecimal.ZERO;
+            BigDecimal totalLiters = BigDecimal.ZERO;
+            
+            for (Map<String, Object> trip : trips) {
+                BigDecimal distance = getBigDecimalValue(trip, "distance_km");
+                BigDecimal tolls = getBigDecimalValue(trip, "tolls_cost");
+                totalDistance = totalDistance.add(distance);
+                totalTollCost = totalTollCost.add(tolls);
+            }
+            
+            for (Map<String, Object> fuelLog : fuelLogs) {
+                BigDecimal cost = getBigDecimalValue(fuelLog, "total_cost");
+                BigDecimal liters = getBigDecimalValue(fuelLog, "liters");
+                totalFuelCost = totalFuelCost.add(cost);
+                totalLiters = totalLiters.add(liters);
+            }
+            
+            // Calculate average fuel efficiency (L/100km)
+            BigDecimal avgFuelEfficiency = BigDecimal.ZERO;
+            if (totalDistance.compareTo(BigDecimal.ZERO) > 0 && totalLiters.compareTo(BigDecimal.ZERO) > 0) {
+                avgFuelEfficiency = totalLiters.multiply(new BigDecimal("100"))
+                        .divide(totalDistance, 2, java.math.RoundingMode.HALF_UP);
+            }
+            
+            int totalVehicles = vehicleData.getTotalCount();
+            int activeVehicles = (int) vehicleData.getVehicles().stream()
+                    .filter(v -> "available".equals(v.getStatus()) || "in_use".equals(v.getStatus()))
+                    .count();
+            
+            log.info("Aggregated: {} trips, {} fuel logs, total distance: {}, fuel cost: {}", 
+                    trips.size(), fuelLogs.size(), totalDistance, totalFuelCost);
+            
+            return AnalyticsData.builder()
+                    .totalVehicles(totalVehicles)
+                    .activeVehicles(activeVehicles)
+                    .totalDistanceKm(totalDistance)
+                    .totalFuelCost(totalFuelCost)
+                    .totalMaintenanceCost(BigDecimal.ZERO) // Could add maintenance logs later
+                    .totalTollCost(totalTollCost)
+                    .averageFuelEfficiency(avgFuelEfficiency)
+                    .build();
+                    
         } catch (Exception e) {
-            log.error("Failed to fetch analytics summary: {}", e.getMessage());
+            log.error("Failed to fetch analytics summary: {}", e.getMessage(), e);
             return getDefaultAnalyticsData();
         }
     }
 
     /**
-     * Fetch cost breakdown from Analytics Service
+     * Fetch cost breakdown from aggregated data
      */
     public AnalyticsData fetchCostAnalysis(String authorization, LocalDate startDate, LocalDate endDate) {
-        log.info("Fetching cost analysis from Analytics Service");
-        
-        try {
-            Map<String, Object> response = analyticsClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/analytics/costs")
-                            .queryParamIfPresent("start_date", java.util.Optional.ofNullable(startDate))
-                            .queryParamIfPresent("end_date", java.util.Optional.ofNullable(endDate))
-                            .build())
-                    .header(HttpHeaders.AUTHORIZATION, authorization)
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
-
-            return mapToAnalyticsData(response);
-        } catch (Exception e) {
-            log.error("Failed to fetch cost analysis: {}", e.getMessage());
-            return getDefaultAnalyticsData();
-        }
+        // Use same aggregation
+        return fetchAnalyticsSummary(authorization, startDate, endDate);
     }
 
     /**
@@ -105,9 +128,10 @@ public class ServiceClient {
                     .bodyToMono(List.class)
                     .block();
 
+            log.info("Fetched {} vehicles", response != null ? response.size() : 0);
             return mapToVehicleData(response);
         } catch (Exception e) {
-            log.error("Failed to fetch vehicles: {}", e.getMessage());
+            log.error("Failed to fetch vehicles: {}", e.getMessage(), e);
             return VehicleData.builder()
                     .vehicles(Collections.emptyList())
                     .totalCount(0)
@@ -122,20 +146,10 @@ public class ServiceClient {
         log.info("Fetching trips from Analytics Service");
         
         try {
-            List<Map<String, Object>> response = analyticsClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/analytics/trips")
-                            .queryParamIfPresent("start_date", java.util.Optional.ofNullable(startDate))
-                            .queryParamIfPresent("end_date", java.util.Optional.ofNullable(endDate))
-                            .build())
-                    .header(HttpHeaders.AUTHORIZATION, authorization)
-                    .retrieve()
-                    .bodyToMono(List.class)
-                    .block();
-
+            List<Map<String, Object>> response = fetchTripsRaw(authorization);
             return mapToTripData(response);
         } catch (Exception e) {
-            log.error("Failed to fetch trips: {}", e.getMessage());
+            log.error("Failed to fetch trips: {}", e.getMessage(), e);
             return TripData.builder()
                     .trips(Collections.emptyList())
                     .totalCount(0)
@@ -143,18 +157,36 @@ public class ServiceClient {
         }
     }
 
-    private AnalyticsData mapToAnalyticsData(Map<String, Object> response) {
-        if (response == null) return getDefaultAnalyticsData();
-        
-        return AnalyticsData.builder()
-                .totalVehicles(getIntValue(response, "total_vehicles", 0))
-                .activeVehicles(getIntValue(response, "active_vehicles", 0))
-                .totalDistanceKm(getBigDecimalValue(response, "total_distance_km"))
-                .totalFuelCost(getBigDecimalValue(response, "total_fuel_cost"))
-                .totalMaintenanceCost(getBigDecimalValue(response, "total_maintenance_cost"))
-                .totalTollCost(getBigDecimalValue(response, "total_toll_cost"))
-                .averageFuelEfficiency(getBigDecimalValue(response, "average_fuel_efficiency"))
-                .build();
+    private List<Map<String, Object>> fetchTripsRaw(String authorization) {
+        try {
+            List<Map<String, Object>> response = analyticsClient.get()
+                    .uri("/analytics/trips")
+                    .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .retrieve()
+                    .bodyToMono(List.class)
+                    .block();
+            log.info("Fetched {} trips", response != null ? response.size() : 0);
+            return response != null ? response : Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Failed to fetch trips: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<Map<String, Object>> fetchFuelLogsRaw(String authorization) {
+        try {
+            List<Map<String, Object>> response = analyticsClient.get()
+                    .uri("/analytics/fuel-logs")
+                    .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .retrieve()
+                    .bodyToMono(List.class)
+                    .block();
+            log.info("Fetched {} fuel logs", response != null ? response.size() : 0);
+            return response != null ? response : Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Failed to fetch fuel logs: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private VehicleData mapToVehicleData(List<Map<String, Object>> response) {
@@ -183,6 +215,9 @@ public class ServiceClient {
     private TripData mapToTripData(List<Map<String, Object>> response) {
         if (response == null) return TripData.builder().trips(Collections.emptyList()).totalCount(0).build();
         
+        BigDecimal totalDistance = BigDecimal.ZERO;
+        BigDecimal totalFuelCost = BigDecimal.ZERO;
+        
         List<TripData.Trip> trips = response.stream()
                 .map(t -> TripData.Trip.builder()
                         .id(getStringValue(t, "id"))
@@ -190,13 +225,23 @@ public class ServiceClient {
                         .vehicleLabel(getStringValue(t, "vehicle_label"))
                         .distanceKm(getBigDecimalValue(t, "distance_km"))
                         .fuelCost(getBigDecimalValue(t, "fuel_cost"))
+                        .tollsCost(getBigDecimalValue(t, "tolls_cost"))
                         .notes(getStringValue(t, "notes"))
+                        .startLocation(getStringValue(t, "start_location"))
+                        .endLocation(getStringValue(t, "end_location"))
                         .build())
                 .toList();
+        
+        for (TripData.Trip trip : trips) {
+            if (trip.getDistanceKm() != null) totalDistance = totalDistance.add(trip.getDistanceKm());
+            if (trip.getFuelCost() != null) totalFuelCost = totalFuelCost.add(trip.getFuelCost());
+        }
 
         return TripData.builder()
                 .trips(trips)
                 .totalCount(trips.size())
+                .totalDistance(totalDistance)
+                .totalFuelCost(totalFuelCost)
                 .build();
     }
 
@@ -204,9 +249,11 @@ public class ServiceClient {
         return AnalyticsData.builder()
                 .totalVehicles(0)
                 .activeVehicles(0)
-                .totalDistanceKm(java.math.BigDecimal.ZERO)
-                .totalFuelCost(java.math.BigDecimal.ZERO)
-                .totalMaintenanceCost(java.math.BigDecimal.ZERO)
+                .totalDistanceKm(BigDecimal.ZERO)
+                .totalFuelCost(BigDecimal.ZERO)
+                .totalMaintenanceCost(BigDecimal.ZERO)
+                .totalTollCost(BigDecimal.ZERO)
+                .averageFuelEfficiency(BigDecimal.ZERO)
                 .build();
     }
 
@@ -223,11 +270,11 @@ public class ServiceClient {
         return defaultValue;
     }
 
-    private java.math.BigDecimal getBigDecimalValue(Map<String, Object> map, String key) {
+    private BigDecimal getBigDecimalValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value instanceof Number) {
-            return new java.math.BigDecimal(value.toString());
+            return new BigDecimal(value.toString());
         }
-        return java.math.BigDecimal.ZERO;
+        return BigDecimal.ZERO;
     }
 }
