@@ -19,4 +19,4 @@ COPY includes/ /etc/nginx/includes/
 # Copy Lua scripts
 COPY lua/ /etc/nginx/lua/
 
-CMD ["/bin/sh", "-c", "envsubst '${FRONTEND_URL} ${USER_MANAGEMENT_URL} ${VEHICLE_SERVICE_URL} ${DASHBOARD_SERVICE_URL} ${NOTIFICATIONS_SERVICE_URL} ${ANALYTICS_SERVICE_URL}' < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/app.conf && openresty -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "envsubst '${FRONTEND_URL} ${USER_MANAGEMENT_URL} ${VEHICLE_SERVICE_URL} ${DASHBOARD_SERVICE_URL} ${NOTIFICATIONS_SERVICE_URL} ${ANALYTICS_SERVICE_URL} ${REPORT_SERVICE_URL}' < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/app.conf && openresty -g 'daemon off;'"]

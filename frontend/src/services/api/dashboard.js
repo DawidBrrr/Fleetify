@@ -297,4 +297,163 @@ export const dashboardApi = {
 		});
 		return handleResponse(response, "Failed to update vehicle issue");
 	},
+
+	// ==================== ASYNC REPORT GENERATION (RabbitMQ) ====================
+
+	/**
+	 * Request a report generation (async with queue)
+	 * Returns a job ID for polling
+	 */
+	requestReport: async (reportType = "fleet-summary", startDate = null, endDate = null) => {
+		const payload = {
+			start_date: startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+			end_date: endDate || new Date().toISOString().split('T')[0],
+			include_charts: true,
+			include_summary: true,
+		};
+
+		const response = await fetch(`${API_BASE_URL}/api/reports/request/${reportType}`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+
+		return handleResponse(response, "Failed to request report");
+	},
+
+	/**
+	 * Check report generation status
+	 */
+	checkReportStatus: async (jobId) => {
+		const response = await fetch(`${API_BASE_URL}/api/reports/status/${jobId}`, {
+			method: "GET",
+			headers: getDefaultHeaders(),
+		});
+
+		return handleResponse(response, "Failed to check report status");
+	},
+
+	/**
+	 * Download generated report
+	 */
+	downloadReport: async (jobId) => {
+		const response = await fetch(`${API_BASE_URL}/api/reports/download/${jobId}`, {
+			method: "GET",
+			headers: getDefaultHeaders(),
+		});
+
+		if (!response.ok) {
+			throw new Error("Failed to download report");
+		}
+
+		return response.blob();
+	},
+
+	/**
+	 * Generate report with polling (convenience method)
+	 * Requests a report, polls for completion, then downloads
+	 */
+	generateReportAsync: async (reportType = "fleet-summary", startDate = null, endDate = null, onProgress = null) => {
+		// Step 1: Request report generation
+		const jobResponse = await dashboardApi.requestReport(reportType, startDate, endDate);
+		
+		if (!jobResponse || !jobResponse.job_id) {
+			throw new Error("Failed to queue report generation");
+		}
+
+		const jobId = jobResponse.job_id;
+		
+		if (onProgress) onProgress({ status: 'PENDING', progress: 0, message: 'Raport oczekuje w kolejce...' });
+
+		// Step 2: Poll for status
+		const maxAttempts = 60; // 2 minutes max (2s intervals)
+		const pollInterval = 2000; // 2 seconds
+		
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			await new Promise(resolve => setTimeout(resolve, pollInterval));
+			
+			const status = await dashboardApi.checkReportStatus(jobId);
+			
+			if (onProgress) {
+				onProgress({
+					status: status.status,
+					progress: status.progress || 0,
+					message: status.message || 'Generowanie raportu...'
+				});
+			}
+			
+			if (status.status === 'COMPLETED') {
+				// Step 3: Download the report
+				return dashboardApi.downloadReport(jobId);
+			}
+			
+			if (status.status === 'FAILED') {
+				throw new Error(status.error_message || 'Generowanie raportu nie powiodło się');
+			}
+		}
+		
+		throw new Error('Przekroczono czas oczekiwania na raport');
+	},
+
+	// ==================== LEGACY SYNC REPORT GENERATION ====================
+	generateFleetReport: async (reportType = "fleet-summary", startDate = null, endDate = null) => {
+		const payload = {
+			report_type: reportType,
+			start_date: startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+			end_date: endDate || new Date().toISOString().split('T')[0],
+			include_charts: true,
+			include_summary: true,
+		};
+
+		const response = await fetch(`${API_BASE_URL}/api/reports/${reportType}`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+
+		if (!response.ok) {
+			throw new Error("Failed to generate report");
+		}
+
+		// Return blob for PDF download
+		return response.blob();
+	},
+
+	downloadTripsReport: async (startDate = null, endDate = null) => {
+		const payload = {
+			start_date: startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+			end_date: endDate || new Date().toISOString().split('T')[0],
+		};
+
+		const response = await fetch(`${API_BASE_URL}/api/reports/trips`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+
+		if (!response.ok) {
+			throw new Error("Failed to generate trips report");
+		}
+
+		return response.blob();
+	},
+
+	downloadCostReport: async (startDate = null, endDate = null) => {
+		const payload = {
+			start_date: startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+			end_date: endDate || new Date().toISOString().split('T')[0],
+		};
+
+		const response = await fetch(`${API_BASE_URL}/api/reports/cost-analysis`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+
+		if (!response.ok) {
+			throw new Error("Failed to generate cost report");
+		}
+
+		return response.blob();
+	},
 };
