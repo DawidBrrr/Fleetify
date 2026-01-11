@@ -20,7 +20,19 @@ import {
 } from "recharts";
 import { analyticsApi } from "../services/api";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
+const Icons = {
+  chart: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  fuel: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M15 12h2a2 2 0 0 1 2 2v5a2 2 0 0 0 4 0V9.83a2 2 0 0 0-.59-1.42L18 4"/><path d="M6 12h6"/></svg>,
+  route: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>,
+  wallet: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
+  car: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 11l1.5-4.5a2 2 0 0 1 1.9-1.5h7.2a2 2 0 0 1 1.9 1.5L19 11"/><path d="M3 17h1a1 1 0 0 0 1-1v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 0 1 1h1"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>,
+  gauge: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 12l5-5"/><path d="M12 7v5"/></svg>,
+  trendUp: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  prediction: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>,
+  location: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+};
+
+const COLORS = ["#05b4d9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
 const PERIOD_OPTIONS = [
     { value: 7, label: "7 dni" },
@@ -32,25 +44,25 @@ const PERIOD_OPTIONS = [
 
 function LoadingSpinner() {
     return (
-        <div className="d-flex justify-content-center align-items-center p-5">
-            <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Ładowanie...</span>
-            </div>
+        <div className="vp-chart-loading">
+            <div className="vp-spinner-large"></div>
+            <span>Ładowanie danych...</span>
         </div>
     );
 }
 
-function ChartCard({ title, children, loading, error }) {
+function ChartCard({ title, icon, children, loading, error }) {
     return (
-        <div className="card shadow-sm h-100">
-            <div className="card-header bg-white border-bottom">
-                <h5 className="card-title mb-0">{title}</h5>
+        <div className="vp-chart-card">
+            <div className="vp-chart-card__header">
+                <div className="vp-chart-card__icon">{icon}</div>
+                <h5 className="vp-chart-card__title">{title}</h5>
             </div>
-            <div className="card-body">
+            <div className="vp-chart-card__body">
                 {loading ? (
                     <LoadingSpinner />
                 ) : error ? (
-                    <div className="alert alert-warning mb-0">{error}</div>
+                    <div className="vp-chart-empty">{error}</div>
                 ) : (
                     children
                 )}
@@ -61,23 +73,23 @@ function ChartCard({ title, children, loading, error }) {
 
 function SummaryCard({ label, value, delta, icon }) {
     const isPositive = delta?.startsWith("+");
-    const deltaClass = isPositive ? "text-success" : "text-danger";
     
     return (
-        <div className="card shadow-sm">
-            <div className="card-body">
-                <div className="d-flex justify-content-between align-items-start">
-                    <div>
-                        <p className="text-muted small mb-1">{label}</p>
-                        <h3 className="mb-0">{value}</h3>
-                        {delta && (
-                            <small className={deltaClass}>
-                                {delta} vs poprzedni miesiąc
-                            </small>
-                        )}
-                    </div>
-                    <span className="fs-1">{icon}</span>
+        <div className="vp-stat-card">
+            <div className="vp-stat-card__header">
+                <div className={`vp-stat-card__icon vp-stat-card__icon--${isPositive ? 'success' : 'primary'}`}>
+                    {icon}
                 </div>
+                {delta && (
+                    <span className={`vp-stat-card__trend vp-stat-card__trend--${isPositive ? 'up' : 'down'}`}>
+                        {Icons.trendUp}
+                        {delta}
+                    </span>
+                )}
+            </div>
+            <div className="vp-stat-card__content">
+                <span className="vp-stat-card__value">{value}</span>
+                <p className="vp-stat-card__label">{label}</p>
             </div>
         </div>
     );
@@ -201,19 +213,20 @@ export default function AnalyticsPage() {
     const formatLiters = (value) => `${value.toFixed(1)} L`;
 
     return (
-        <div className="analytics-page p-4">
+        <div className="section-shell p-4 p-lg-5 dashboard-section">
             {/* Header */}
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 className="h3 mb-1">📈 Analityka Floty</h1>
-                    <p className="text-muted mb-0">Szczegółowe statystyki i wykresy</p>
+            <div className="vp-dashboard-header">
+                <div className="vp-dashboard-header__info">
+                    <div className="vp-dashboard-header__badge">Analiza danych</div>
+                    <h2 className="vp-dashboard-header__title">Analityka floty</h2>
+                    <span className="vp-dashboard-header__subtitle">Szczegółowe statystyki i wykresy</span>
                 </div>
-                <div className="d-flex gap-3">
+                <div className="d-flex gap-2 flex-wrap">
                     <select
-                        className="form-select"
+                        className="vp-select"
                         value={selectedVehicle}
                         onChange={(e) => setSelectedVehicle(e.target.value)}
-                        style={{ minWidth: "200px" }}
+                        style={{ minWidth: "180px" }}
                     >
                         <option value="">Wszystkie pojazdy</option>
                         {vehicles.map((v) => (
@@ -223,10 +236,10 @@ export default function AnalyticsPage() {
                         ))}
                     </select>
                     <select
-                        className="form-select"
+                        className="vp-select"
                         value={period}
                         onChange={(e) => setPeriod(Number(e.target.value))}
-                        style={{ minWidth: "150px" }}
+                        style={{ minWidth: "130px" }}
                     >
                         {PERIOD_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -246,7 +259,7 @@ export default function AnalyticsPage() {
                             ? formatCurrency(summaryData.data.current_month.fuel_cost) 
                             : "—"}
                         delta={summaryData.data?.deltas?.fuel_cost}
-                        icon="⛽"
+                        icon={Icons.fuel}
                     />
                 </div>
                 <div className="col-md-4">
@@ -256,24 +269,25 @@ export default function AnalyticsPage() {
                             ? `${summaryData.data.current_month.total_distance_km.toFixed(0)} km` 
                             : "—"}
                         delta={summaryData.data?.deltas?.distance}
-                        icon="🛣️"
+                        icon={Icons.route}
                     />
                 </div>
                 <div className="col-md-4">
                     <SummaryCard
                         label="Liczba tras (ten miesiąc)"
                         value={summaryData.data?.current_month?.trips_count ?? "—"}
-                        icon="📍"
+                        icon={Icons.location}
                     />
                 </div>
             </div>
 
             {/* Charts Row 1 */}
-            <div className="row g-4 mb-4">
+            <div className="row g-3 mb-4">
                 {/* Fuel Consumption Over Time */}
                 <div className="col-lg-8">
                     <ChartCard 
-                        title="🛢️ Zużycie paliwa w czasie" 
+                        title="Zużycie paliwa w czasie" 
+                        icon={Icons.fuel}
                         loading={fuelData.loading}
                         error={fuelData.error}
                     >
@@ -326,7 +340,8 @@ export default function AnalyticsPage() {
                 {/* Cost Breakdown Pie */}
                 <div className="col-lg-4">
                     <ChartCard 
-                        title="💰 Podział kosztów" 
+                        title="Podział kosztów" 
+                        icon={Icons.wallet}
                         loading={costData.loading}
                         error={costData.error}
                     >
@@ -364,11 +379,12 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Charts Row 2 */}
-            <div className="row g-4 mb-4">
+            <div className="row g-3 mb-4">
                 {/* Vehicle Mileage Bar */}
                 <div className="col-lg-6">
                     <ChartCard 
-                        title="🚗 Przebieg wg pojazdów (Top 10)" 
+                        title="Przebieg wg pojazdów (Top 10)" 
+                        icon={Icons.car}
                         loading={mileageData.loading}
                         error={mileageData.error}
                     >
@@ -398,7 +414,8 @@ export default function AnalyticsPage() {
                 {/* Fuel Efficiency Over Time */}
                 <div className="col-lg-6">
                     <ChartCard 
-                        title="📊 Efektywność paliwowa (l/100km)" 
+                        title="Efektywność paliwowa (l/100km)" 
+                        icon={Icons.gauge}
                         loading={efficiencyData.loading}
                         error={efficiencyData.error}
                     >
@@ -436,10 +453,11 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Charts Row 3 - Cost Trend */}
-            <div className="row g-4 mb-4">
+            <div className="row g-3 mb-4">
                 <div className="col-12">
                     <ChartCard 
-                        title="📈 Trend kosztów miesięcznych" 
+                        title="Trend kosztów miesięcznych" 
+                        icon={Icons.trendUp}
                         loading={trendData.loading}
                         error={trendData.error}
                     >
@@ -465,10 +483,11 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Charts Row 4 - Cost Prediction (Regression) */}
-            <div className="row g-4">
+            <div className="row g-3">
                 <div className="col-12">
                     <ChartCard 
-                        title="🔮 Predykcja kosztów (regresja liniowa)" 
+                        title="Predykcja kosztów (regresja liniowa)" 
+                        icon={Icons.prediction}
                         loading={predictionData.loading}
                         error={predictionData.error}
                     >

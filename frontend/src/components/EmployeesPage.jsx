@@ -1,65 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardApi } from '../services/api/dashboard';
 
+const Icons = {
+  user: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  userPlus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
+  userMinus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
+  car: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 11l1.5-4.5a2 2 0 0 1 1.9-1.5h7.2a2 2 0 0 1 1.9 1.5L19 11"/><path d="M3 17h1a1 1 0 0 0 1-1v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 0 1 1h1"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>,
+  tasks: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+  mail: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
+  plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  x: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  calendar: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+};
+
 const PRESENCE_UI = {
   zalogowany: { label: 'Zalogowany', className: 'success' },
   dostepny: { label: 'Dostępny', className: 'info' },
-  niedostepny: { label: 'Niedostępny', className: 'secondary' }
+  niedostepny: { label: 'Niedostępny', className: 'warning' }
 };
 
 function PresenceBadge({ state }) {
   if (!state) {
-    return <span className="badge bg-light text-dark">Brak danych</span>;
+    return <span className="vp-status vp-status--warning"><span className="vp-status__dot"></span>Brak danych</span>;
   }
-  const mapping = PRESENCE_UI[state] || { label: state, className: 'secondary' };
-  return <span className={`badge bg-${mapping.className}`}>{mapping.label}</span>;
+  const mapping = PRESENCE_UI[state] || { label: state, className: 'warning' };
+  return (
+    <span className={`vp-status vp-status--${mapping.className}`}>
+      <span className="vp-status__dot"></span>
+      {mapping.label}
+    </span>
+  );
 }
 
 function EmployeeCard({ employee, onAssign, onRemove }) {
   return (
-    <div className="card h-100 shadow-sm border-0">
-      <div className="card-body">
-        <div className="d-flex align-items-center mb-3">
-          <div className="bg-primary bg-opacity-10 rounded-circle p-3 me-3 text-primary">
-            <i className="bi bi-person-fill h4 mb-0"></i>
-          </div>
-          <div>
-            <h5 className="card-title mb-1">{employee.full_name}</h5>
-            <p className="text-muted small mb-0">{employee.email}</p>
-          </div>
+    <div className="vp-employee-card">
+      <div className="vp-employee-card__header">
+        <div className="vp-employee-card__avatar">
+          {Icons.user}
         </div>
-        <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
-          <span className={`badge bg-${employee.status === 'active' ? 'success' : 'secondary'}`}>
-            {employee.status === 'active' ? 'Aktywny' : employee.status}
-          </span>
-          {employee.worker_profile && (
-            <PresenceBadge state={employee.worker_profile.presence_state} />
-          )}
-          <small className="text-muted ms-auto">Dołączył: {new Date(employee.created_at).toLocaleDateString()}</small>
+        <div className="vp-employee-card__info">
+          <h5 className="vp-employee-card__name">{employee.full_name}</h5>
+          <p className="vp-employee-card__email">{employee.email}</p>
         </div>
-        <div className="d-flex flex-column gap-2">
-          <button
-            className="btn btn-sm btn-outline-primary w-100"
-            onClick={() => onAssign(employee, 'vehicle')}
-          >
-            <i className="bi bi-car-front me-2"></i>
-            Przydziel Pojazd
-          </button>
-          <button
-            className="btn btn-sm btn-outline-secondary w-100"
-            onClick={() => onAssign(employee, 'tasks')}
-          >
-            <i className="bi bi-clipboard-check me-2"></i>
-            Przydziel Zadanie
-          </button>
-          <button
-            className="btn btn-sm btn-outline-danger w-100"
-            onClick={() => onRemove(employee)}
-          >
-            <i className="bi bi-person-dash me-2"></i>
-            Usuń z zespołu
-          </button>
-        </div>
+      </div>
+      <div className="vp-employee-card__meta">
+        <span className={`vp-status vp-status--${employee.status === 'active' ? 'success' : 'warning'}`}>
+          <span className="vp-status__dot"></span>
+          {employee.status === 'active' ? 'Aktywny' : employee.status}
+        </span>
+        {employee.worker_profile && (
+          <PresenceBadge state={employee.worker_profile.presence_state} />
+        )}
+        <span className="vp-employee-card__date">
+          {Icons.calendar}
+          {new Date(employee.created_at).toLocaleDateString('pl-PL')}
+        </span>
+      </div>
+      <div className="vp-employee-card__actions">
+        <button
+          className="vp-btn vp-btn--primary"
+          onClick={() => onAssign(employee, 'vehicle')}
+        >
+          {Icons.car} Przydziel pojazd
+        </button>
+        <button
+          className="vp-btn vp-btn--outline"
+          onClick={() => onAssign(employee, 'tasks')}
+        >
+          {Icons.tasks} Zadania
+        </button>
+        <button
+          className="vp-btn vp-btn--danger"
+          onClick={() => onRemove(employee)}
+        >
+          {Icons.userMinus}
+        </button>
       </div>
     </div>
   );
@@ -230,94 +247,95 @@ export default function EmployeesPage() {
     });
   };
 
-  if (loading) return <div className="p-5 text-center">Ładowanie zespołu...</div>;
+  if (loading) return <div className="vp-loading">Ładowanie zespołu...</div>;
 
   return (
     <div className="section-shell p-4 p-lg-5 dashboard-section">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="h3 mb-1">Zespół</h2>
-          <p className="text-muted">Zarządzaj pracownikami</p>
+      <div className="vp-dashboard-header">
+        <div className="vp-dashboard-header__info">
+          <div className="vp-dashboard-header__badge">Zarządzanie zespołem</div>
+          <h2 className="vp-dashboard-header__title">Pracownicy</h2>
+          <span className="vp-dashboard-header__subtitle">Zarządzaj członkami zespołu i przydzielaj zasoby</span>
         </div>
         <button 
-          className="btn btn-primary"
+          className="vp-btn vp-btn--primary"
           onClick={() => setShowForm(!showForm)}
         >
-          <i className="bi bi-person-plus-fill me-2"></i>
-          Zaproś Członka
+          {Icons.userPlus} Zaproś członka
         </button>
       </div>
 
       {showForm && (
-        <div className="card mb-4 border-0 shadow-sm bg-light">
-          <div className="card-body p-4">
-            <h5 className="mb-3">Zaproś Nowego Członka</h5>
-            <form onSubmit={handleInviteSubmit}>
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label">Imię i Nazwisko</label>
-                  <div className="input-group">
-                    <span className="input-group-text"><i className="bi bi-person"></i></span>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="full_name"
-                      value={formData.full_name}
-                      onChange={handleChange}
-                      required
-                      placeholder="np. Jan Kowalski"
-                    />
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    placeholder="np. jan@firma.pl"
-                  />
-                </div>
-                <div className="col-12 text-end">
-                  <button type="button" className="btn btn-link text-muted me-2" onClick={() => setShowForm(false)}>Anuluj</button>
-                  <button type="submit" className="btn btn-success">Wyślij Zaproszenie</button>
-                </div>
-              </div>
-            </form>
+        <div className="vp-form-card mb-4">
+          <div className="vp-form-card__header vp-form-card__header--trip">
+            <span className="vp-form-card__icon">{Icons.userPlus}</span>
+            <span className="vp-form-card__title">Zaproś nowego członka</span>
           </div>
+          <form onSubmit={handleInviteSubmit}>
+            <div className="vp-grid vp-grid--2">
+              <div className="vp-form-group">
+                <label className="vp-label">Imię i nazwisko</label>
+                <input
+                  type="text"
+                  className="vp-input"
+                  name="full_name"
+                  value={formData.full_name}
+                  onChange={handleChange}
+                  required
+                  placeholder="np. Jan Kowalski"
+                />
+              </div>
+              <div className="vp-form-group">
+                <label className="vp-label">Email</label>
+                <input
+                  type="email"
+                  className="vp-input"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  placeholder="np. jan@firma.pl"
+                />
+              </div>
+            </div>
+            <div className="vp-form-actions d-flex justify-content-end gap-2">
+              <button type="button" className="vp-btn vp-btn--outline" onClick={() => setShowForm(false)}>Anuluj</button>
+              <button type="submit" className="vp-btn vp-btn--success">{Icons.mail} Wyślij zaproszenie</button>
+            </div>
+          </form>
         </div>
       )}
 
       {showAssignForm && selectedEmployee && (
-        <div className="card mb-4 border-0 shadow-sm bg-light">
-          <div className="card-body p-4">
-            <h5 className="mb-3">Przydział dla: {selectedEmployee.full_name}</h5>
-            <div className="btn-group mb-4" role="group" aria-label="tryb przydziału">
-              <button
-                type="button"
-                className={`btn btn-sm ${assignmentMode === 'vehicle' ? 'btn-primary' : 'btn-outline-primary'}`}
-                onClick={() => setAssignmentMode('vehicle')}
-              >
-                Przydziel Pojazd
-              </button>
-              <button
-                type="button"
-                className={`btn btn-sm ${assignmentMode === 'tasks' ? 'btn-primary' : 'btn-outline-primary'}`}
-                onClick={() => setAssignmentMode('tasks')}
-              >
-                Przydziel Zadanie
-              </button>
-            </div>
-            <div className="row g-4">
-              {assignmentMode === 'vehicle' && (
-                <div className="col-12 col-lg-5">
-                  <form onSubmit={handleVehicleAssignment}>
-                    <label className="form-label">Wybierz Pojazd</label>
+        <div className="vp-form-card mb-4">
+          <div className="vp-form-card__header vp-form-card__header--manage">
+            <span className="vp-form-card__icon">{Icons.user}</span>
+            <span className="vp-form-card__title">Przydział dla: {selectedEmployee.full_name}</span>
+          </div>
+          <div className="vp-tab-group mb-4">
+            <button
+              type="button"
+              className={`vp-tab ${assignmentMode === 'vehicle' ? 'vp-tab--active' : ''}`}
+              onClick={() => setAssignmentMode('vehicle')}
+            >
+              {Icons.car} Pojazd
+            </button>
+            <button
+              type="button"
+              className={`vp-tab ${assignmentMode === 'tasks' ? 'vp-tab--active' : ''}`}
+              onClick={() => setAssignmentMode('tasks')}
+            >
+              {Icons.tasks} Zadania
+            </button>
+          </div>
+          <div className="row g-3">
+            {assignmentMode === 'vehicle' && (
+              <div className="col-12 col-lg-6">
+                <form onSubmit={handleVehicleAssignment}>
+                  <div className="vp-form-group">
+                    <label className="vp-label">Wybierz pojazd</label>
                     <select 
-                      className="form-select mb-3"
+                      className="vp-select"
                       value={assignmentData.vehicle_id}
                       onChange={(e) => setAssignmentData({...assignmentData, vehicle_id: e.target.value})}
                       required
@@ -329,69 +347,80 @@ export default function EmployeesPage() {
                         </option>
                       ))}
                     </select>
-                    <button type="submit" className="btn btn-outline-primary w-100" disabled={assigningVehicle}>
-                      {assigningVehicle ? 'Zapisywanie...' : 'Zapisz przydział pojazdu'}
-                    </button>
-                  </form>
-                </div>
-              )}
-              {assignmentMode === 'tasks' && (
-                <div className="col-12 col-lg-7">
-                  <form onSubmit={handleTasksAssignment}>
-                    <label className="form-label">Lista Zadań</label>
-                    <div className="input-group mb-2">
+                  </div>
+                  <button type="submit" className="vp-btn vp-btn--primary w-100" disabled={assigningVehicle}>
+                    {assigningVehicle ? 'Zapisywanie...' : <>{Icons.check} Zapisz przydział</>}
+                  </button>
+                </form>
+              </div>
+            )}
+            {assignmentMode === 'tasks' && (
+              <div className="col-12 col-lg-8">
+                <form onSubmit={handleTasksAssignment}>
+                  <div className="vp-form-group">
+                    <label className="vp-label">Lista zadań</label>
+                    <div className="vp-input-group">
                       <input 
                         type="text" 
-                        className="form-control" 
+                        className="vp-input" 
                         placeholder="Nowe zadanie..." 
                         value={newTask}
                         onChange={(e) => setNewTask(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())}
                       />
-                      <button className="btn btn-outline-secondary" type="button" onClick={handleAddTask}>Dodaj</button>
+                      <button className="vp-btn vp-btn--outline" type="button" onClick={handleAddTask}>
+                        {Icons.plus}
+                      </button>
                     </div>
-                    <ul className="list-group mb-3">
-                      {assignmentData.tasks.map(task => (
-                        <li key={task.id} className="list-group-item d-flex justify-content-between align-items-center">
-                          {task.label}
-                          <button type="button" className="btn-close btn-sm" onClick={() => handleRemoveTask(task.id)}></button>
-                        </li>
-                      ))}
-                      {assignmentData.tasks.length === 0 && <li className="list-group-item text-muted fst-italic">Brak zadań</li>}
-                    </ul>
-                    <button type="submit" className="btn btn-primary" disabled={savingTasks}>
-                      {savingTasks ? 'Zapisywanie...' : 'Zapisz zadania'}
-                    </button>
-                  </form>
-                </div>
-              )}
-            </div>
-            <div className="text-end mt-3">
-              <button
-                type="button"
-                className="btn btn-link text-muted"
-                onClick={() => {
-                  setShowAssignForm(false);
-                  setAssignmentMode('vehicle');
-                }}
-              >
-                Zamknij
-              </button>
-            </div>
+                  </div>
+                  <div className="vp-task-list mb-3">
+                    {assignmentData.tasks.map(task => (
+                      <div key={task.id} className="vp-task-item">
+                        <span className="vp-task-item__label">{task.label}</span>
+                        <button type="button" className="vp-task-item__remove" onClick={() => handleRemoveTask(task.id)}>
+                          {Icons.x}
+                        </button>
+                      </div>
+                    ))}
+                    {assignmentData.tasks.length === 0 && (
+                      <div className="vp-hint text-center py-3">Brak zadań — dodaj pierwsze zadanie powyżej</div>
+                    )}
+                  </div>
+                  <button type="submit" className="vp-btn vp-btn--success" disabled={savingTasks}>
+                    {savingTasks ? 'Zapisywanie...' : <>{Icons.check} Zapisz zadania</>}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+          <div className="text-end mt-3">
+            <button
+              type="button"
+              className="vp-btn vp-btn--outline"
+              onClick={() => {
+                setShowAssignForm(false);
+                setAssignmentMode('vehicle');
+              }}
+            >
+              Zamknij
+            </button>
           </div>
         </div>
       )}
 
-      <div className="row g-4">
+      <div className="row g-3">
         {employees.map(employee => (
           <div key={employee.id} className="col-md-6 col-lg-4">
             <EmployeeCard employee={employee} onAssign={handleAssignClick} onRemove={handleRemoveEmployee} />
           </div>
         ))}
         {employees.length === 0 && (
-          <div className="col-12 text-center py-5 text-muted">
-            <i className="bi bi-people display-4 mb-3 d-block"></i>
-            Brak pracowników w zespole.
+          <div className="col-12">
+            <div className="vp-empty-state">
+              <div className="vp-empty-state__icon">{Icons.user}</div>
+              <p className="vp-empty-state__title">Brak pracowników w zespole</p>
+              <p className="vp-empty-state__desc">Zaproś pierwszego członka zespołu</p>
+            </div>
           </div>
         )}
       </div>
