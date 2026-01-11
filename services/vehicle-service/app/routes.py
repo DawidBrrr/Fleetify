@@ -182,6 +182,48 @@ async def update_vehicle(
     return db_vehicle
 
 
+@router.delete("/vehicles/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_vehicle(
+    vehicle_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Delete a vehicle from the fleet. Only admins can delete vehicles.
+    Vehicle must not be currently assigned to anyone.
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can delete vehicles")
+    
+    owner_id = get_owner_id(current_user)
+    
+    db_vehicle = (
+        db.query(models.Vehicle)
+        .filter(models.Vehicle.id == vehicle_id)
+        .filter(models.Vehicle.owner_id == owner_id)
+        .first()
+    )
+    if db_vehicle is None:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    # Check if vehicle is currently assigned
+    if db_vehicle.current_driver_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete vehicle that is currently assigned to an employee. Please unassign it first."
+        )
+    
+    # Store data for event before deletion
+    vehicle_data = _serialize_vehicle(db_vehicle)
+    
+    db.delete(db_vehicle)
+    db.commit()
+    
+    messaging.publish_message("vehicle_deleted", vehicle_data)
+    
+    return None
+
+
 @router.get("/vehicles/{vehicle_id}/issues", response_model=List[schemas.VehicleIssue])
 async def list_vehicle_issues(
     vehicle_id: int, 

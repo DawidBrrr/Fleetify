@@ -276,6 +276,11 @@ async def update_vehicle_location(
         authorization,
     )
 
+
+@app.delete("/dashboard/vehicles/{vehicle_id}")
+async def delete_vehicle(vehicle_id: int, authorization: str = Header(None)):
+    return await delete_data(VEHICLE_SERVICE_URL, f"/vehicles/{vehicle_id}", authorization)
+
 @app.get("/dashboard/employees")
 async def get_employees(authorization: str = Header(None)):
     return await fetch_data(USER_MANAGEMENT_URL, "/api/users", authorization)

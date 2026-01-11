@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class VehicleIssueBase(BaseModel):
@@ -39,11 +39,11 @@ class VehicleIssue(BaseModel):
         orm_mode = True
 
 class VehicleBase(BaseModel):
-    vin: str
-    make: str
-    model: str
-    year: int
-    license_plate: str
+    vin: str = Field(..., min_length=17, max_length=17, description="Vehicle Identification Number (exactly 17 characters)")
+    make: str = Field(..., max_length=50)
+    model: str = Field(..., max_length=50)
+    year: int = Field(..., ge=1900, le=2100)
+    license_plate: str = Field(..., max_length=20)
     status: Optional[str] = "available"
     fuel_type: Optional[str] = "gasoline"
     fuel_level: Optional[int] = 100
@@ -55,6 +55,13 @@ class VehicleBase(BaseModel):
     city: Optional[str] = None
     last_service_date: Optional[datetime] = None
     current_driver_id: Optional[str] = None
+
+    @field_validator('vin')
+    @classmethod
+    def validate_vin(cls, v):
+        if len(v) != 17:
+            raise ValueError('VIN musi mieć dokładnie 17 znaków')
+        return v.upper()
 
 class VehicleCreate(VehicleBase):
     pass

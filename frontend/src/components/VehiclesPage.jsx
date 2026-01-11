@@ -533,6 +533,24 @@ export default function VehiclesPage({ role = 'admin', user }) {
     }
   };
 
+  const handleDeleteVehicle = async (vehicle) => {
+    if (!window.confirm(`Czy na pewno chcesz usunąć pojazd ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}) z floty? Ta operacja jest nieodwracalna.`)) {
+      return;
+    }
+    try {
+      await dashboardApi.deleteVehicle(vehicle.id);
+      showBanner('success', 'Pojazd został usunięty z floty');
+      loadVehicles();
+    } catch (error) {
+      console.error('Failed to delete vehicle', error);
+      if (error.message?.includes('assigned')) {
+        showBanner('error', 'Nie można usunąć pojazdu, który jest przypisany do pracownika');
+      } else {
+        showBanner('error', 'Nie udało się usunąć pojazdu');
+      }
+    }
+  };
+
   const renderIssues = (vehicle) => {
     const issues = issuesByVehicle[vehicle.id] || vehicle.issues || [];
     if (issuesLoading[vehicle.id]) {
@@ -801,6 +819,17 @@ export default function VehiclesPage({ role = 'admin', user }) {
                   >
                     <i className="bi bi-geo-alt me-2"></i>Zmień lokalizację
                   </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger btn-sm ms-2"
+                      onClick={() => handleDeleteVehicle(vehicle)}
+                      disabled={vehicle.current_driver_id}
+                      title={vehicle.current_driver_id ? 'Nie można usunąć pojazdu przypisanego do pracownika' : 'Usuń pojazd z floty'}
+                    >
+                      <i className="bi bi-trash me-2"></i>Usuń pojazd
+                    </button>
+                  )}
                 </div>
               </div>
             )}
