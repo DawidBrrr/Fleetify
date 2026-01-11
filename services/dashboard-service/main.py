@@ -382,6 +382,7 @@ async def update_task_status(update: TaskUpdate, authorization: str = Header(Non
 
 @app.post("/dashboard/employee/vehicle/return")
 async def return_vehicle(authorization: str = Header(None)):
+    # First, get vehicle assignment from analytics service
     result = await post_data(
         ANALYTICS_SERVICE_URL,
         "/analytics/employee/vehicle/return",
@@ -391,10 +392,11 @@ async def return_vehicle(authorization: str = Header(None)):
     vehicle_id = result.get("vehicle_id") if isinstance(result, dict) else None
     if vehicle_id:
         try:
-            await put_data(
+            # Use dedicated return endpoint that allows employee access
+            await post_data(
                 VEHICLE_SERVICE_URL,
-                f"/vehicles/{vehicle_id}",
-                {"status": "available", "current_driver_id": None},
+                f"/vehicles/{vehicle_id}/return",
+                {},
                 authorization,
             )
         except HTTPException as exc:
