@@ -74,6 +74,7 @@ class VehicleUpdate(BaseModel):
 
 class Vehicle(VehicleBase):
     id: int
+    owner_id: str  # Admin who owns this vehicle
     created_at: datetime
     updated_at: datetime
     issues: List[VehicleIssue] = Field(default_factory=list)
