@@ -15,11 +15,119 @@ const statusVariants = {
   assigned: 'info',
 };
 
+// SVG Icons as components
+const Icons = {
+  car: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-3-5H9L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
+      <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+    </svg>
+  ),
+  electric: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  ),
+  fuel: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/>
+      <path d="M15 12h3.5a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L21 5.5"/>
+      <line x1="3" y1="22" x2="15" y2="22"/><line x1="6" y1="12" x2="12" y2="12"/>
+    </svg>
+  ),
+  route: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/>
+      <circle cx="18" cy="5" r="3"/>
+    </svg>
+  ),
+  alert: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  ),
+  settings: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
+  check: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  ),
+  send: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>
+  ),
+  location: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+    </svg>
+  ),
+  trash: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    </svg>
+  ),
+  speedometer: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.41 5.66-5.66 1.41"/>
+    </svg>
+  ),
+  wrench: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    </svg>
+  ),
+  gauge: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12 19.07 4.93"/>
+    </svg>
+  ),
+  plus: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  ),
+  calculator: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/>
+      <line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/>
+      <line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/>
+    </svg>
+  ),
+  refresh: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+    </svg>
+  ),
+  truck: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/>
+      <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+    </svg>
+  ),
+  success: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  ),
+  error: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+    </svg>
+  ),
+};
+
 const getVehicleIcon = (fuelType) => {
-  if (fuelType === 'electric') return 'bi-lightning-charge';
-  if (fuelType === 'hybrid') return 'bi-ev-front';
-  if (fuelType === 'diesel') return 'bi-droplet-half';
-  return 'bi-fuel-pump';
+  if (fuelType === 'electric') return Icons.electric;
+  if (fuelType === 'hybrid') return Icons.electric;
+  if (fuelType === 'diesel') return Icons.fuel;
+  return Icons.car;
 };
 
 const formatDate = (value) => {
@@ -579,35 +687,37 @@ export default function VehiclesPage({ role = 'admin', user }) {
       return <div className="text-muted small">Ładowanie zgłoszeń...</div>;
     }
     if (!issues.length) {
-      return <div className="text-muted small">Brak zgłoszeń dla tego pojazdu.</div>;
+      return <div className="vp-hint">Brak zgłoszeń dla tego pojazdu.</div>;
     }
     return (
-      <ul className="list-unstyled d-flex flex-column gap-2 mt-2 mb-0">
+      <div className="d-flex flex-column gap-2 mt-2">
         {issues.map((issue) => (
-          <li key={issue.id} className="border rounded-3 p-3">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <strong>{issue.title}</strong>
-              <span className={`badge bg-${issue.status === 'resolved' ? 'success' : 'danger'}`}>
+          <div key={issue.id} className="vp-issue">
+            <div className="vp-issue__header">
+              <h6 className="vp-issue__title">{issue.title}</h6>
+              <span className={`vp-status vp-status--${issue.status === 'resolved' ? 'success' : 'danger'}`}>
+                <span className="vp-status__dot"></span>
                 {issue.status === 'resolved' ? 'Zamknięte' : 'Otwarte'}
               </span>
-              {isAdmin && issue.status !== 'resolved' && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-success"
-                  onClick={() => handleResolveIssue(vehicle.id, issue.id)}
-                >
-                  Oznacz jako rozwiązane
-                </button>
-              )}
             </div>
-            <p className="mb-2 small text-muted" title={issue.description}>{issue.description}</p>
-            <div className="d-flex justify-content-between small text-muted">
+            <p className="vp-issue__desc">{issue.description}</p>
+            <div className="vp-issue__meta">
               <span>Poziom: {issue.severity}</span>
               <span>{formatDate(issue.created_at)}</span>
             </div>
-          </li>
+            {isAdmin && issue.status !== 'resolved' && (
+              <button
+                type="button"
+                className="vp-btn vp-btn--outline vp-btn--full"
+                style={{ marginTop: '8px', padding: '8px 12px' }}
+                onClick={() => handleResolveIssue(vehicle.id, issue.id)}
+              >
+                {Icons.check} Oznacz jako rozwiązane
+              </button>
+            )}
+          </div>
         ))}
-      </ul>
+      </div>
     );
   };
 
@@ -623,295 +733,298 @@ export default function VehiclesPage({ role = 'admin', user }) {
         : `${vehicle.fuel_level ?? 0}% Paliwa`;
 
     return (
-      <div key={vehicle.id} className={`vehicle-panel card border-0 shadow-sm h-100 ${isActive ? 'vehicle-panel--active' : ''}`}>
-        <button type="button" className="vehicle-panel__header text-start" onClick={() => toggleVehicle(vehicle.id)}>
+      <div key={vehicle.id} className={`vehicle-panel h-100 ${isActive ? 'vehicle-panel--active' : ''}`}>
+        <button type="button" className="vehicle-panel__header" onClick={() => toggleVehicle(vehicle.id)}>
           <div className="d-flex align-items-center gap-3">
             <div className="vehicle-avatar">
-              <i className={`bi ${getVehicleIcon(vehicle.fuel_type)}`}></i>
+              {getVehicleIcon(vehicle.fuel_type)}
             </div>
-            <div>
-              <p className="text-uppercase text-muted small mb-1">#{vehicle.id}</p>
-              <h4 className="h6 mb-0" title={`${vehicle.make} ${vehicle.model}`}>
+            <div style={{ textAlign: 'left' }}>
+              <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '2px', letterSpacing: '0.03em' }}>#{vehicle.id}</p>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '2px', color: '#0f1c2e' }} title={`${vehicle.make} ${vehicle.model}`}>
                 {vehicle.make} {vehicle.model}
               </h4>
-              <small className="text-muted" title={vehicle.license_plate}>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }} title={vehicle.license_plate}>
                 {vehicle.license_plate}
-              </small>
+              </span>
             </div>
           </div>
-          <span className={`badge bg-${statusVariants[vehicle.status] || 'secondary'}`}>
+          <span className={`vp-status vp-status--${statusVariants[vehicle.status] || 'info'}`}>
+            <span className="vp-status__dot"></span>
             {statusLabels[vehicle.status] || vehicle.status}
           </span>
         </button>
-        <div className="vehicle-panel__meta d-flex flex-wrap gap-3 px-4 pb-3">
-          <span className="small text-muted" title={`Przebieg: ${vehicle.odometer || 0} km`}>
-            <i className="bi bi-speedometer2 me-1"></i>{vehicle.odometer || 0} km
+        <div className="vehicle-panel__meta d-flex flex-wrap gap-2">
+          <span className="vp-chip" title={`Przebieg: ${vehicle.odometer || 0} km`}>
+            {Icons.speedometer}{vehicle.odometer || 0} km
           </span>
-          <span className="small text-muted" title={`Ostatni serwis: ${formatDate(vehicle.last_service_date)}`}>
-            <i className="bi bi-tools me-1"></i>Serwis: {formatDate(vehicle.last_service_date)}
+          <span className="vp-chip" title={`Ostatni serwis: ${formatDate(vehicle.last_service_date)}`}>
+            {Icons.wrench}{formatDate(vehicle.last_service_date)}
           </span>
-          <span className="small text-muted" title={`Lokalizacja: ${formatLocationLabel(vehicle)}`}>
-            <i className="bi bi-geo-alt me-1"></i>{formatLocationLabel(vehicle)}
+          <span className="vp-chip" title={`Lokalizacja: ${formatLocationLabel(vehicle)}`}>
+            {Icons.location}{formatLocationLabel(vehicle)}
           </span>
-          <span className="small text-muted" title={energyLabel}>
-            <i className="bi bi-thermometer-half me-1"></i>{energyLabel}
+          <span className="vp-chip" title={energyLabel}>
+            {Icons.gauge}{energyLabel}
           </span>
-          <span className="small text-muted" title={`Otwarte zgłoszenia: ${openIssueCount}`}>
-            <i className="bi bi-exclamation-triangle me-1"></i>
-            {openIssueCount} zgłoszeń
+          <span className="vp-chip" title={`Otwarte zgłoszenia: ${openIssueCount}`}>
+            {Icons.alert}{openIssueCount} zgłoszeń
           </span>
         </div>
         {isActive && (
-          <div className="vehicle-panel__body px-4 pb-4">
+          <div className="vehicle-panel__body" style={{ padding: '16px 20px 20px' }}>
             {canLogUsage && (
               <>
-              <div className="row g-4">
+              <div className="row g-3">
                 <div className="col-12 col-lg-6">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-header bg-primary text-white py-3">
-                      <h5 className="mb-0 d-flex align-items-center">
-                        <i className="bi bi-signpost-2 me-2"></i>Zapisz przejazd
-                      </h5>
+                  <div className="vp-form-card">
+                    <div className="vp-form-card__header vp-form-card__header--trip">
+                      {Icons.route}
+                      <span>Zapisz przejazd</span>
                     </div>
-                    <div className="card-body p-4">
+                    <div className="vp-form-card__body">
                       <form onSubmit={(event) => handleTripSubmit(event, vehicle)}>
-                        <div className="mb-3">
-                          <label className="form-label fw-medium">Trasa / klient</label>
+                        <div className="vp-form-group">
+                          <label className="vp-label">Trasa / klient</label>
                           <input
                             type="text"
-                            className="form-control form-control-lg"
+                            className="vp-input"
                             placeholder="np. Warszawa → Łódź"
                             value={tripForm.route_label}
                             onChange={(e) => handleTripChange(vehicle.id, 'route_label', e.target.value)}
                           />
                         </div>
-                        <div className="row g-3 mb-3">
-                          <div className="col-md-6">
-                            <label className="form-label fw-medium">Dystans <span className="text-danger">*</span></label>
-                            <div className="input-group input-group-lg">
+                        <div className="vp-grid vp-grid--2 vp-form-group">
+                          <div>
+                            <label className="vp-label">Dystans <span className="vp-label__required">*</span></label>
+                            <div className="vp-input-group">
                               <input
                                 type="number"
                                 step="0.1"
-                                className="form-control"
+                                className="vp-input"
                                 placeholder="120"
                                 value={tripForm.distance_km}
                                 onChange={(e) => handleTripChange(vehicle.id, 'distance_km', e.target.value)}
                                 required
                               />
-                              <span className="input-group-text">km</span>
+                              <span className="vp-input-group__suffix">km</span>
                             </div>
                           </div>
-                          <div className="col-md-6">
-                            <label className="form-label fw-medium">Spalone paliwo <span className="text-danger">*</span></label>
-                            <div className="input-group input-group-lg">
+                          <div>
+                            <label className="vp-label">Spalone paliwo <span className="vp-label__required">*</span></label>
+                            <div className="vp-input-group">
                               <input
                                 type="number"
                                 step="0.1"
-                                className="form-control"
+                                className="vp-input"
                                 placeholder="8.5"
                                 value={tripForm.fuel_used_l}
                                 onChange={(e) => handleTripChange(vehicle.id, 'fuel_used_l', e.target.value)}
                                 required
                               />
-                              <span className="input-group-text">L</span>
+                              <span className="vp-input-group__suffix">L</span>
                             </div>
-                            <small className="text-muted">Ważne dla analityki efektywności</small>
+                            <span className="vp-hint">Ważne dla analityki</span>
                           </div>
                         </div>
-                        <div className="mb-3">
-                          <label className="form-label fw-medium">Opłaty drogowe (autostrady, parkingi)</label>
-                          <div className="input-group input-group-lg">
+                        <div className="vp-form-group">
+                          <label className="vp-label">Opłaty drogowe</label>
+                          <div className="vp-input-group">
                             <input
                               type="number"
                               step="0.01"
-                              className="form-control"
+                              className="vp-input"
                               placeholder="0"
                               value={tripForm.tolls_cost}
                               onChange={(e) => handleTripChange(vehicle.id, 'tolls_cost', e.target.value)}
                             />
-                            <span className="input-group-text">PLN</span>
+                            <span className="vp-input-group__suffix">PLN</span>
                           </div>
                         </div>
-                        <div className="mb-4">
-                          <label className="form-label fw-medium">Notatki</label>
+                        <div className="vp-form-group">
+                          <label className="vp-label">Notatki</label>
                           <textarea
-                            className="form-control"
+                            className="vp-textarea"
                             rows="2"
-                            placeholder="Dodatkowe informacje o trasie..."
+                            placeholder="Dodatkowe informacje..."
                             value={tripForm.notes}
                             onChange={(e) => handleTripChange(vehicle.id, 'notes', e.target.value)}
                           ></textarea>
                         </div>
-                        <button type="submit" className="btn btn-primary btn-lg w-100">
-                          <i className="bi bi-check-circle me-2"></i>Zapisz przejazd
-                        </button>
+                        <div className="vp-form-actions">
+                          <button type="submit" className="vp-btn vp-btn--primary vp-btn--full">
+                            {Icons.check} Zapisz przejazd
+                          </button>
+                        </div>
                       </form>
                     </div>
                   </div>
                 </div>
                 <div className="col-12 col-lg-6">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-header bg-success text-white py-3">
-                      <h5 className="mb-0 d-flex align-items-center">
-                        <i className="bi bi-fuel-pump me-2"></i>Tankowanie
-                      </h5>
+                  <div className="vp-form-card">
+                    <div className="vp-form-card__header vp-form-card__header--fuel">
+                      {Icons.fuel}
+                      <span>Tankowanie</span>
                     </div>
-                    <div className="card-body p-4">
+                    <div className="vp-form-card__body">
                       <form onSubmit={(event) => handleFuelSubmit(event, vehicle)}>
-                        <div className="row g-3 mb-3">
-                          <div className="col-md-6">
-                            <label className="form-label fw-medium">Ilość paliwa <span className="text-danger">*</span></label>
-                            <div className="input-group input-group-lg">
+                        <div className="vp-grid vp-grid--2 vp-form-group">
+                          <div>
+                            <label className="vp-label">Ilość paliwa <span className="vp-label__required">*</span></label>
+                            <div className="vp-input-group">
                               <input
                                 type="number"
                                 step="0.01"
-                                className="form-control"
+                                className="vp-input"
                                 placeholder="45"
                                 value={fuelForm.liters}
                                 onChange={(e) => handleFuelChange(vehicle.id, 'liters', e.target.value)}
                                 required
                               />
-                              <span className="input-group-text">L</span>
+                              <span className="vp-input-group__suffix">L</span>
                             </div>
                           </div>
-                          <div className="col-md-6">
-                            <label className="form-label fw-medium">Cena za litr</label>
-                            <div className="input-group input-group-lg">
+                          <div>
+                            <label className="vp-label">Cena za litr</label>
+                            <div className="vp-input-group">
                               <input
                                 type="number"
                                 step="0.01"
-                                className="form-control"
+                                className="vp-input"
                                 placeholder="6.20"
                                 value={fuelForm.price_per_liter}
                                 onChange={(e) => handleFuelChange(vehicle.id, 'price_per_liter', e.target.value)}
                               />
-                              <span className="input-group-text">PLN/L</span>
+                              <span className="vp-input-group__suffix">PLN/L</span>
                             </div>
                           </div>
                         </div>
-                        <div className="row g-3 mb-3">
-                          <div className="col-md-6">
-                            <label className="form-label fw-medium">Koszt całkowity</label>
-                            <div className="input-group input-group-lg">
+                        <div className="vp-grid vp-grid--2 vp-form-group">
+                          <div>
+                            <label className="vp-label">Koszt całkowity</label>
+                            <div className="vp-input-group">
                               <input
                                 type="number"
                                 step="0.01"
-                                className={`form-control ${fuelForm.liters && fuelForm.price_per_liter ? 'bg-success-subtle border-success' : ''}`}
+                                className="vp-input"
+                                style={fuelForm.liters && fuelForm.price_per_liter ? { borderColor: '#10b981', background: 'rgba(16, 185, 129, 0.05)' } : {}}
                                 placeholder="280"
                                 value={fuelForm.total_cost}
                                 onChange={(e) => handleFuelChange(vehicle.id, 'total_cost', e.target.value)}
                                 readOnly={!!(fuelForm.liters && fuelForm.price_per_liter)}
                               />
-                              <span className="input-group-text">PLN</span>
+                              <span className="vp-input-group__suffix">PLN</span>
                             </div>
                             {fuelForm.liters && fuelForm.price_per_liter && (
-                              <small className="text-success fw-medium"><i className="bi bi-calculator me-1"></i>Obliczono automatycznie</small>
+                              <span className="vp-calc-badge">{Icons.calculator} Auto</span>
                             )}
                           </div>
-                          <div className="col-md-6">
-                            <label className="form-label fw-medium">Stan licznika</label>
-                            <div className="input-group input-group-lg">
+                          <div>
+                            <label className="vp-label">Stan licznika</label>
+                            <div className="vp-input-group">
                               <input
                                 type="number"
-                                className="form-control"
+                                className="vp-input"
                                 placeholder={vehicle.odometer || '15200'}
                                 value={fuelForm.odometer}
                                 onChange={(e) => handleFuelChange(vehicle.id, 'odometer', e.target.value)}
                               />
-                              <span className="input-group-text">km</span>
+                              <span className="vp-input-group__suffix">km</span>
                             </div>
                           </div>
                         </div>
-                        <div className="mb-4">
-                          <label className="form-label fw-medium">Stacja paliw</label>
+                        <div className="vp-form-group">
+                          <label className="vp-label">Stacja paliw</label>
                           <input
                             type="text"
-                            className="form-control form-control-lg"
-                            placeholder="np. Orlen, ul. Główna 15, Warszawa"
+                            className="vp-input"
+                            placeholder="np. Orlen, ul. Główna 15"
                             value={fuelForm.station}
                             onChange={(e) => handleFuelChange(vehicle.id, 'station', e.target.value)}
                           />
                         </div>
-                        <button type="submit" className="btn btn-success btn-lg w-100">
-                          <i className="bi bi-check-circle me-2"></i>Zapisz tankowanie
-                        </button>
+                        <div className="vp-form-actions">
+                          <button type="submit" className="vp-btn vp-btn--success vp-btn--full">
+                            {Icons.check} Zapisz tankowanie
+                          </button>
+                        </div>
                       </form>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="row g-4 mt-2">
+              <div className="row g-3 mt-1">
                 <div className="col-12 col-lg-6">
-                  <div className="card border-0 shadow-sm">
-                    <div className="card-header bg-danger text-white py-3">
-                      <h5 className="mb-0 d-flex align-items-center">
-                        <i className="bi bi-exclamation-triangle me-2"></i>Zgłoś problem
-                      </h5>
+                  <div className="vp-form-card">
+                    <div className="vp-form-card__header vp-form-card__header--issue">
+                      {Icons.alert}
+                      <span>Zgłoś problem</span>
                     </div>
-                    <div className="card-body p-4">
+                    <div className="vp-form-card__body">
                       <form onSubmit={(event) => handleIssueSubmit(event, vehicle)}>
-                        <div className="mb-3">
-                          <label className="form-label fw-medium">Poziom ważności</label>
-                          <select className="form-select form-select-lg" value={issueForm.severity} onChange={(e) => handleIssueChange(vehicle.id, 'severity', e.target.value)}>
+                        <div className="vp-form-group">
+                          <label className="vp-label">Poziom ważności</label>
+                          <select className="vp-select" value={issueForm.severity} onChange={(e) => handleIssueChange(vehicle.id, 'severity', e.target.value)}>
                             <option value="low">🟢 Niski - może poczekać</option>
                             <option value="medium">🟡 Średni - do załatwienia</option>
                             <option value="high">🟠 Wysoki - pilne</option>
                             <option value="critical">🔴 Krytyczny - natychmiast</option>
                           </select>
                         </div>
-                        <div className="mb-3">
-                          <label className="form-label fw-medium">Tytuł problemu <span className="text-danger">*</span></label>
+                        <div className="vp-form-group">
+                          <label className="vp-label">Tytuł problemu <span className="vp-label__required">*</span></label>
                           <input 
                             type="text" 
-                            className="form-control form-control-lg" 
+                            className="vp-input" 
                             placeholder="np. Uszkodzone lusterko boczne" 
                             value={issueForm.title} 
                             onChange={(e) => handleIssueChange(vehicle.id, 'title', e.target.value)} 
                             required 
                           />
                         </div>
-                        <div className="mb-4">
-                          <label className="form-label fw-medium">Opis szczegółowy <span className="text-danger">*</span></label>
+                        <div className="vp-form-group">
+                          <label className="vp-label">Opis szczegółowy <span className="vp-label__required">*</span></label>
                           <textarea 
-                            className="form-control" 
-                            placeholder="Opisz dokładnie co się stało, kiedy i w jakich okolicznościach..." 
+                            className="vp-textarea" 
+                            placeholder="Opisz dokładnie co się stało..." 
                             rows="3" 
                             value={issueForm.description} 
                             onChange={(e) => handleIssueChange(vehicle.id, 'description', e.target.value)} 
                             required
                           ></textarea>
                         </div>
-                        <button type="submit" className="btn btn-danger btn-lg w-100">
-                          <i className="bi bi-send me-2"></i>Wyślij zgłoszenie
-                        </button>
+                        <div className="vp-form-actions">
+                          <button type="submit" className="vp-btn vp-btn--danger vp-btn--full">
+                            {Icons.send} Wyślij zgłoszenie
+                          </button>
+                        </div>
                       </form>
                     </div>
                   </div>
                 </div>
                 <div className="col-12 col-lg-6">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-header bg-secondary text-white py-3">
-                      <h5 className="mb-0 d-flex align-items-center">
-                        <i className="bi bi-gear me-2"></i>Zarządzanie pojazdem
-                      </h5>
+                  <div className="vp-form-card">
+                    <div className="vp-form-card__header vp-form-card__header--manage">
+                      {Icons.settings}
+                      <span>Zarządzanie</span>
                     </div>
-                    <div className="card-body p-4 d-flex flex-column gap-3">
+                    <div className="vp-form-card__body d-flex flex-column gap-2">
                       <button
                         type="button"
-                        className="btn btn-outline-primary btn-lg"
+                        className="vp-btn vp-btn--outline vp-btn--full"
                         onClick={() => openLocationModal(vehicle)}
                       >
-                        <i className="bi bi-geo-alt me-2"></i>Zmień lokalizację pojazdu
+                        {Icons.location} Zmień lokalizację
                       </button>
                       {isAdmin && (
                         <button
                           type="button"
-                          className="btn btn-outline-danger btn-lg"
+                          className="vp-btn vp-btn--outline-danger vp-btn--full"
                           onClick={() => handleDeleteVehicle(vehicle)}
                           disabled={vehicle.current_driver_id}
                           title={vehicle.current_driver_id ? 'Nie można usunąć pojazdu przypisanego do pracownika' : 'Usuń pojazd z floty'}
                         >
-                          <i className="bi bi-trash me-2"></i>Usuń pojazd z floty
+                          {Icons.trash} Usuń pojazd
                         </button>
                       )}
                     </div>
@@ -920,194 +1033,213 @@ export default function VehiclesPage({ role = 'admin', user }) {
               </div>
               </>
             )}
-            <div className="mt-4">
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <h5 className="h6 mb-0">Zgłoszenia</h5>
-                <button type="button" className="btn btn-link btn-sm" onClick={() => fetchVehicleIssues(vehicle.id)}>
-                  Odśwież
-                </button>
-              </div>
-              {renderIssues(vehicle)}
+            <div className="vp-divider">
+              <div className="vp-divider__line"></div>
+              <span className="vp-divider__text">Zgłoszenia</span>
+              <div className="vp-divider__line"></div>
             </div>
+            <div className="d-flex justify-content-end mb-2">
+              <button type="button" className="vp-btn vp-btn--outline" style={{ padding: '6px 12px' }} onClick={() => fetchVehicleIssues(vehicle.id)}>
+                {Icons.refresh} Odśwież
+              </button>
+            </div>
+            {renderIssues(vehicle)}
           </div>
         )}
       </div>
     );
   };
 
-  if (loading) return <div className="p-5 text-center">Ładowanie floty...</div>;
+  if (loading) return (
+    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '300px' }}>
+      <div className="loading-spinner"></div>
+    </div>
+  );
 
   return (
     <div className="section-shell p-4 p-lg-5 dashboard-section">
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <div className="vp-page-header">
         <div>
-          <h2 className="h3 mb-1">Pojazdy floty</h2>
-          <p className="text-muted mb-0">
-            {isAdmin ? 'Zarządzaj inwentarzem i zdrowiem pojazdów' : 'Zapisuj trasy, tankowania i zgłaszaj usterki dla przydzielonych aut'}
+          <h2 className="vp-page-header__title">Pojazdy floty</h2>
+          <p className="vp-page-header__subtitle">
+            {isAdmin ? 'Zarządzaj inwentarzem i stanem pojazdów' : 'Zapisuj trasy, tankowania i zgłaszaj usterki'}
           </p>
         </div>
         {isAdmin ? (
-          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-            <i className="bi bi-plus-lg me-2"></i>
-            Dodaj pojazd
+          <button className="vp-btn vp-btn--primary" onClick={() => setShowForm(!showForm)}>
+            {Icons.plus} Dodaj pojazd
           </button>
         ) : (
-          <span className="badge bg-dark-subtle text-dark">Widok kierowcy</span>
+          <span className="vp-status vp-status--info"><span className="vp-status__dot"></span>Widok kierowcy</span>
         )}
       </div>
 
       {banner && (
-        <div className={`alert ${banner.type === 'error' ? 'alert-danger' : 'alert-success'} mb-4`}>
+        <div className={`vp-alert vp-alert--${banner.type}`}>
+          {banner.type === 'error' ? Icons.error : Icons.success}
           {banner.message}
         </div>
       )}
 
       {isAdmin && showForm && (
-        <div className="card mb-4 border-0 shadow-sm bg-light">
-          <div className="card-body p-4">
-            <h5 className="mb-3">Dodaj nowy pojazd</h5>
-            <form onSubmit={handleVehicleSubmit}>
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label">Marka</label>
-                  <div className="input-group">
-                    <span className="input-group-text"><i className="bi bi-car-front"></i></span>
-                    <input type="text" className="form-control" name="make" value={formData.make} onChange={handleVehicleFieldChange} required placeholder="np. Toyota" />
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label">Model</label>
-                  <input type="text" className="form-control" name="model" value={formData.model} onChange={handleVehicleFieldChange} required placeholder="np. Camry" />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">Rok</label>
-                  <input type="number" className="form-control" name="year" value={formData.year} onChange={handleVehicleFieldChange} required />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">VIN</label>
-                  <input type="text" className="form-control" name="vin" value={formData.vin} onChange={handleVehicleFieldChange} required />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">Rejestracja</label>
-                  <input type="text" className="form-control" name="license_plate" value={formData.license_plate} onChange={handleVehicleFieldChange} required />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">Typ napędu</label>
-                  <select className="form-select" name="fuel_type" value={formData.fuel_type} onChange={handleVehicleFieldChange}>
-                    <option value="gasoline">Benzyna</option>
-                    <option value="diesel">Diesel</option>
-                    <option value="electric">Elektryczny</option>
-                    <option value="hybrid">Hybryda</option>
-                  </select>
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">Przebieg (km)</label>
-                  <input type="number" className="form-control" name="odometer" value={formData.odometer} onChange={handleVehicleFieldChange} min="0" />
-                </div>
-                {(formData.fuel_type === 'electric' || formData.fuel_type === 'hybrid') && (
-                  <div className="col-md-4">
-                    <label className="form-label">Poziom baterii (%)</label>
-                    <input type="number" className="form-control" name="battery_level" value={formData.battery_level} onChange={handleVehicleFieldChange} min="0" max="100" />
-                  </div>
-                )}
-                {formData.fuel_type !== 'electric' && (
-                  <div className="col-md-4">
-                    <label className="form-label">Poziom paliwa (%)</label>
-                    <input type="number" className="form-control" name="fuel_level" value={formData.fuel_level} onChange={handleVehicleFieldChange} min="0" max="100" />
-                  </div>
-                )}
-                <div className="col-md-4">
-                  <label className="form-label">Pojemność baku (L)</label>
-                  <input type="number" className="form-control" name="fuel_capacity" value={formData.fuel_capacity} onChange={handleVehicleFieldChange} min="0" />
-                </div>
-                <div className="col-12 text-end">
-                  <button type="button" className="btn btn-link text-muted me-2" onClick={() => setShowForm(false)}>Anuluj</button>
-                  <button type="submit" className="btn btn-success">Zapisz pojazd</button>
-                </div>
+        <div className="vp-add-form">
+          <h5 className="vp-add-form__title">Dodaj nowy pojazd</h5>
+          <form onSubmit={handleVehicleSubmit}>
+            <div className="vp-grid vp-grid--2 vp-grid--3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+              <div className="vp-form-group">
+                <label className="vp-label">Marka</label>
+                <input type="text" className="vp-input" name="make" value={formData.make} onChange={handleVehicleFieldChange} required placeholder="np. Toyota" />
               </div>
-            </form>
-          </div>
+              <div className="vp-form-group">
+                <label className="vp-label">Model</label>
+                <input type="text" className="vp-input" name="model" value={formData.model} onChange={handleVehicleFieldChange} required placeholder="np. Camry" />
+              </div>
+              <div className="vp-form-group">
+                <label className="vp-label">Rok</label>
+                <input type="number" className="vp-input" name="year" value={formData.year} onChange={handleVehicleFieldChange} required />
+              </div>
+              <div className="vp-form-group">
+                <label className="vp-label">VIN (17 znaków)</label>
+                <input type="text" className="vp-input" name="vin" value={formData.vin} onChange={handleVehicleFieldChange} required maxLength={17} />
+              </div>
+              <div className="vp-form-group">
+                <label className="vp-label">Rejestracja</label>
+                <input type="text" className="vp-input" name="license_plate" value={formData.license_plate} onChange={handleVehicleFieldChange} required />
+              </div>
+              <div className="vp-form-group">
+                <label className="vp-label">Typ napędu</label>
+                <select className="vp-select" name="fuel_type" value={formData.fuel_type} onChange={handleVehicleFieldChange}>
+                  <option value="gasoline">Benzyna</option>
+                  <option value="diesel">Diesel</option>
+                  <option value="electric">Elektryczny</option>
+                  <option value="hybrid">Hybryda</option>
+                </select>
+              </div>
+              <div className="vp-form-group">
+                <label className="vp-label">Przebieg (km)</label>
+                <input type="number" className="vp-input" name="odometer" value={formData.odometer} onChange={handleVehicleFieldChange} min="0" />
+              </div>
+              {(formData.fuel_type === 'electric' || formData.fuel_type === 'hybrid') && (
+                <div className="vp-form-group">
+                  <label className="vp-label">Poziom baterii (%)</label>
+                  <input type="number" className="vp-input" name="battery_level" value={formData.battery_level} onChange={handleVehicleFieldChange} min="0" max="100" />
+                </div>
+              )}
+              {formData.fuel_type !== 'electric' && (
+                <div className="vp-form-group">
+                  <label className="vp-label">Poziom paliwa (%)</label>
+                  <input type="number" className="vp-input" name="fuel_level" value={formData.fuel_level} onChange={handleVehicleFieldChange} min="0" max="100" />
+                </div>
+              )}
+              <div className="vp-form-group">
+                <label className="vp-label">Pojemność baku (L)</label>
+                <input type="number" className="vp-input" name="fuel_capacity" value={formData.fuel_capacity} onChange={handleVehicleFieldChange} min="0" />
+              </div>
+            </div>
+            <div className="d-flex justify-content-end gap-2 mt-3">
+              <button type="button" className="vp-btn vp-btn--outline" onClick={() => setShowForm(false)}>Anuluj</button>
+              <button type="submit" className="vp-btn vp-btn--success">{Icons.check} Zapisz pojazd</button>
+            </div>
+          </form>
         </div>
       )}
 
-      <div className="row g-4">
+      <div className="row g-3">
         {vehicles.map((vehicle) => (
           <div key={vehicle.id} className="col-12 col-lg-6">
             {renderVehicleCard(vehicle)}
           </div>
         ))}
         {vehicles.length === 0 && (
-          <div className="col-12 text-center py-5 text-muted">
-            <i className="bi bi-truck display-4 mb-3 d-block"></i>
-            {isAdmin ? 'Brak pojazdów we flocie.' : 'Brak przydzielonych pojazdów.'}
+          <div className="col-12">
+            <div className="vp-empty">
+              <div className="vp-empty__icon">{Icons.truck}</div>
+              <p className="vp-empty__text">
+                {isAdmin ? 'Brak pojazdów we flocie.' : 'Brak przydzielonych pojazdów.'}
+              </p>
+            </div>
           </div>
         )}
       </div>
 
       {locationModalVehicle && (
-        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal d-block" style={{ backgroundColor: 'rgba(15, 28, 46, 0.6)', backdropFilter: 'blur(4px)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Zmień lokalizację: {getVehicleLabel(locationModalVehicle)}</h5>
-                <button type="button" className="btn-close" onClick={() => setLocationModalVehicle(null)}></button>
+            <div className="modal-content" style={{ borderRadius: '16px', border: 'none', overflow: 'hidden' }}>
+              <div className="modal-header" style={{ background: 'linear-gradient(135deg, #0f1c2e 0%, #1e3a5f 100%)', color: 'white', border: 'none', padding: '16px 20px' }}>
+                <h5 className="modal-title" style={{ fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {Icons.location}
+                  Zmień lokalizację: {getVehicleLabel(locationModalVehicle)}
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setLocationModalVehicle(null)}></button>
               </div>
-              <div className="modal-body">
+              <div className="modal-body" style={{ padding: '20px' }}>
                 <div className="row g-3">
                   <div className="col-12 col-lg-8">
                     <div
                       id={`vehicle-map-${locationModalVehicle.id}`}
-                      style={{ height: '360px', borderRadius: '8px', overflow: 'hidden', background: '#f3f3f3' }}
+                      style={{ height: '320px', borderRadius: '12px', overflow: 'hidden', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' }}
                     ></div>
                   </div>
                   <div className="col-12 col-lg-4">
-                    <label className="form-label">Miasto / miejscowość</label>
-                    <div className="input-group mb-2">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="np. Warszawa"
-                        value={locationForms[locationModalVehicle.id]?.city ?? ''}
-                        onChange={(e) => handleLocationInput(locationModalVehicle.id, 'city', e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-outline-primary"
-                        onClick={() => handleSearchCity(locationModalVehicle.id)}
-                      >
-                        Znajdź
-                      </button>
+                    <div className="vp-form-group">
+                      <label className="vp-label">Miasto / miejscowość</label>
+                      <div className="d-flex gap-2">
+                        <input
+                          type="text"
+                          className="vp-input"
+                          placeholder="np. Warszawa"
+                          value={locationForms[locationModalVehicle.id]?.city ?? ''}
+                          onChange={(e) => handleLocationInput(locationModalVehicle.id, 'city', e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="vp-btn vp-btn--outline"
+                          style={{ whiteSpace: 'nowrap', padding: '9px 14px' }}
+                          onClick={() => handleSearchCity(locationModalVehicle.id)}
+                        >
+                          Znajdź
+                        </button>
+                      </div>
+                      <span className="vp-hint" style={{ marginTop: '6px', display: 'block' }}>
+                        {locationLookups[locationModalVehicle.id] === 'loading' && '🔍 Wyszukiwanie...'}
+                        {locationLookups[locationModalVehicle.id] === 'searching' && '🔍 Wyszukiwanie lokalizacji...'}
+                        {locationLookups[locationModalVehicle.id] === 'ready' && '✓ Miasto zaktualizowane'}
+                        {locationLookups[locationModalVehicle.id] === 'not-found' && '✗ Nie znaleziono'}
+                        {locationLookups[locationModalVehicle.id] === 'error' && '✗ Błąd'}
+                      </span>
                     </div>
-                    <div className="small text-muted mb-2">
-                      {locationLookups[locationModalVehicle.id] === 'loading' && 'Wyszukiwanie najbliższego miasta...'}
-                      {locationLookups[locationModalVehicle.id] === 'searching' && 'Wyszukiwanie lokalizacji...'}
-                      {locationLookups[locationModalVehicle.id] === 'ready' && 'Miasto zaktualizowane.'}
-                      {locationLookups[locationModalVehicle.id] === 'not-found' && 'Nie znaleziono miejscowości.'}
-                      {locationLookups[locationModalVehicle.id] === 'error' && 'Błąd podczas pobierania lokalizacji.'}
+                    <div className="vp-grid vp-grid--2 vp-form-group">
+                      <div>
+                        <label className="vp-label">Szerokość geo.</label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          className="vp-input"
+                          value={locationForms[locationModalVehicle.id]?.latitude ?? ''}
+                          onChange={(e) => handleLocationInput(locationModalVehicle.id, 'latitude', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="vp-label">Długość geo.</label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          className="vp-input"
+                          value={locationForms[locationModalVehicle.id]?.longitude ?? ''}
+                          onChange={(e) => handleLocationInput(locationModalVehicle.id, 'longitude', e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <label className="form-label">Szerokość geograficzna</label>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      className="form-control mb-2"
-                      value={locationForms[locationModalVehicle.id]?.latitude ?? ''}
-                      onChange={(e) => handleLocationInput(locationModalVehicle.id, 'latitude', e.target.value)}
-                    />
-                    <label className="form-label">Długość geograficzna</label>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      className="form-control mb-3"
-                      value={locationForms[locationModalVehicle.id]?.longitude ?? ''}
-                      onChange={(e) => handleLocationInput(locationModalVehicle.id, 'longitude', e.target.value)}
-                    />
-                    <p className="text-muted small mb-3">Kliknij na mapę, aby ustawić pinezkę — najbliższa miejscowość zostanie dobrana automatycznie. Możesz też wpisać współrzędne lub wyszukać miasto ręcznie.</p>
+                    <p className="vp-hint" style={{ lineHeight: 1.5 }}>Kliknij na mapę, aby ustawić pinezkę — miasto zostanie dobrane automatycznie.</p>
                   </div>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setLocationModalVehicle(null)}>Anuluj</button>
-                <button type="button" className="btn btn-primary" onClick={handleSaveLocation}>Zapisz lokalizację</button>
+              <div className="modal-footer" style={{ border: 'none', padding: '16px 20px', background: '#f8fafc' }}>
+                <button type="button" className="vp-btn vp-btn--outline" onClick={() => setLocationModalVehicle(null)}>Anuluj</button>
+                <button type="button" className="vp-btn vp-btn--primary" onClick={handleSaveLocation}>
+                  {Icons.check} Zapisz lokalizację
+                </button>
               </div>
             </div>
           </div>
