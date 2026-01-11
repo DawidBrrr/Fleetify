@@ -246,20 +246,61 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
             </div>
           </div>
           <div className="dashboard-panel">
-            <h3 className="h5 mb-3">Koszty operacyjne</h3>
-            <div className="d-flex flex-column gap-2">
-              {costEntries.map(([label, value]) => (
-                <div key={label}>
-                  <div className="d-flex justify-content-between small text-muted mb-1 text-capitalize">
-                    <span>{label}</span>
-                    <span>{value}%</span>
-                  </div>
-                  <div className="progress w-100" role="progressbar" aria-valuenow={value} aria-valuemin="0" aria-valuemax={totalCost}>
-                    <div className="progress-bar" style={{ width: `${value}%` }}></div>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h3 className="h5 mb-0">Koszty operacyjne</h3>
+              <span className="badge bg-primary-subtle text-primary">{data.costBreakdown?.period || 'ostatnie 30 dni'}</span>
+            </div>
+            {data.costBreakdown?.breakdown ? (
+              <>
+                <div className="d-flex justify-content-center mb-3">
+                  <div className="text-center">
+                    <p className="display-5 fw-bold text-primary mb-0">{(data.costBreakdown.total || 0).toLocaleString('pl-PL')} PLN</p>
+                    <small className="text-muted">Łączne koszty</small>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="d-flex flex-column gap-2 mb-3">
+                  {data.costBreakdown.breakdown.map((item) => (
+                    <div key={item.category} className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                      <div className="d-flex align-items-center gap-2">
+                        <i className={`bi ${item.icon || 'bi-currency-exchange'} text-muted`}></i>
+                        <span>{item.category}</span>
+                      </div>
+                      <span className="fw-semibold">{item.amount.toLocaleString('pl-PL')} PLN</span>
+                    </div>
+                  ))}
+                </div>
+                {data.costBreakdown.stats && (
+                  <div className="row g-2 text-center small text-muted">
+                    <div className="col-4">
+                      <div className="fw-semibold text-dark">{data.costBreakdown.stats.trip_count}</div>
+                      <div>przejazdów</div>
+                    </div>
+                    <div className="col-4">
+                      <div className="fw-semibold text-dark">{(data.costBreakdown.stats.total_distance_km || 0).toLocaleString('pl-PL')} km</div>
+                      <div>dystans</div>
+                    </div>
+                    <div className="col-4">
+                      <div className="fw-semibold text-dark">{data.costBreakdown.stats.avg_cost_per_km} PLN</div>
+                      <div>za km</div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="d-flex flex-column gap-2">
+                {costEntries.map(([label, value]) => (
+                  <div key={label}>
+                    <div className="d-flex justify-content-between small text-muted mb-1 text-capitalize">
+                      <span>{label}</span>
+                      <span>{value}%</span>
+                    </div>
+                    <div className="progress w-100" role="progressbar" aria-valuenow={value} aria-valuemin="0" aria-valuemax={totalCost}>
+                      <div className="progress-bar" style={{ width: `${value}%` }}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="dashboard-panel">
             <div className="d-flex justify-content-between align-items-center mb-2">
@@ -295,7 +336,7 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                   <tr>
                     <th>Pojazd / Trasa</th>
                     <th>Dystans</th>
-                    <th>Koszt paliwa</th>
+                    <th>Spalone paliwo</th>
                     <th>Notatka</th>
                   </tr>
                 </thead>
@@ -311,7 +352,7 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                     <tr key={trip.id}>
                       <td className="fw-semibold">{trip.vehicle_label || trip.route_label || "Nieznana trasa"}</td>
                       <td>{trip.distance_km ? `${trip.distance_km} km` : "—"}</td>
-                      <td>{trip.fuel_cost ? `${trip.fuel_cost} zł` : "—"}</td>
+                      <td>{trip.fuel_used_l ? `${trip.fuel_used_l} L` : "—"}</td>
                       <td className="text-muted small">{trip.notes || "—"}</td>
                     </tr>
                   ))}

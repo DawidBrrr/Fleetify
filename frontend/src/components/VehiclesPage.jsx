@@ -348,15 +348,37 @@ export default function VehiclesPage({ role = 'admin', user }) {
   };
 
   const handleTripChange = updateFormState(setTripForms, createTripForm);
-  const handleFuelChange = updateFormState(setFuelForms, createFuelForm);
   const handleIssueChange = updateFormState(setIssueForms, createIssueForm);
+
+  // Specjalna obsługa tankowania z auto-kalkulacją
+  const handleFuelChange = (vehicleId, field, value) => {
+    setFuelForms((prev) => {
+      const current = prev[vehicleId] ? { ...prev[vehicleId] } : createFuelForm();
+      current[field] = value;
+      
+      // Auto-kalkulacja kosztu całkowitego
+      const liters = parseNumber(field === 'liters' ? value : current.liters);
+      const pricePerLiter = parseNumber(field === 'price_per_liter' ? value : current.price_per_liter);
+      
+      if (liters !== undefined && pricePerLiter !== undefined && field !== 'total_cost') {
+        current.total_cost = (liters * pricePerLiter).toFixed(2);
+      }
+      
+      return { ...prev, [vehicleId]: current };
+    });
+  };
 
   const handleTripSubmit = async (event, vehicle) => {
     event.preventDefault();
     const form = tripForms[vehicle.id] || createTripForm();
     const distanceValue = parseNumber(form.distance_km);
+    const fuelUsedValue = parseNumber(form.fuel_used_l);
     if (distanceValue === undefined) {
       showBanner('error', 'Podaj prawidłowy dystans (km).');
+      return;
+    }
+    if (fuelUsedValue === undefined) {
+      showBanner('error', 'Podaj ilość spalonego paliwa (L) - wymagane do analityki.');
       return;
     }
     const { vehicleId, vehicleLabel, targetUserId } = buildLogContext(vehicle, user);
@@ -642,196 +664,261 @@ export default function VehiclesPage({ role = 'admin', user }) {
         {isActive && (
           <div className="vehicle-panel__body px-4 pb-4">
             {canLogUsage && (
+              <>
               <div className="row g-4">
-                <div className="col-12 col-xxl-4">
-                  <h5 className="h6 mb-3">Zapisz przejazd</h5>
-                  <form onSubmit={(event) => handleTripSubmit(event, vehicle)} className="d-flex flex-column gap-2">
-                    <div>
-                      <label className="form-label small text-muted">Trasa / klient</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="np. Warszawa → Łódź"
-                        title="Podaj nazwę trasy lub klienta"
-                        value={tripForm.route_label}
-                        onChange={(e) => handleTripChange(vehicle.id, 'route_label', e.target.value)}
-                      />
+                <div className="col-12 col-lg-6">
+                  <div className="card border-0 shadow-sm h-100">
+                    <div className="card-header bg-primary text-white py-3">
+                      <h5 className="mb-0 d-flex align-items-center">
+                        <i className="bi bi-signpost-2 me-2"></i>Zapisz przejazd
+                      </h5>
                     </div>
-                    <div className="row g-2">
-                      <div className="col">
-                        <label className="form-label small text-muted">Dystans (km)</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="120"
-                          title="Dystans przejazdu w kilometrach"
-                          value={tripForm.distance_km}
-                          onChange={(e) => handleTripChange(vehicle.id, 'distance_km', e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="col">
-                        <label className="form-label small text-muted">Koszt paliwa (PLN)</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="150"
-                          title="Łączny koszt paliwa"
-                          value={tripForm.fuel_cost}
-                          onChange={(e) => handleTripChange(vehicle.id, 'fuel_cost', e.target.value)}
-                        />
-                      </div>
+                    <div className="card-body p-4">
+                      <form onSubmit={(event) => handleTripSubmit(event, vehicle)}>
+                        <div className="mb-3">
+                          <label className="form-label fw-medium">Trasa / klient</label>
+                          <input
+                            type="text"
+                            className="form-control form-control-lg"
+                            placeholder="np. Warszawa → Łódź"
+                            value={tripForm.route_label}
+                            onChange={(e) => handleTripChange(vehicle.id, 'route_label', e.target.value)}
+                          />
+                        </div>
+                        <div className="row g-3 mb-3">
+                          <div className="col-md-6">
+                            <label className="form-label fw-medium">Dystans <span className="text-danger">*</span></label>
+                            <div className="input-group input-group-lg">
+                              <input
+                                type="number"
+                                step="0.1"
+                                className="form-control"
+                                placeholder="120"
+                                value={tripForm.distance_km}
+                                onChange={(e) => handleTripChange(vehicle.id, 'distance_km', e.target.value)}
+                                required
+                              />
+                              <span className="input-group-text">km</span>
+                            </div>
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label fw-medium">Spalone paliwo <span className="text-danger">*</span></label>
+                            <div className="input-group input-group-lg">
+                              <input
+                                type="number"
+                                step="0.1"
+                                className="form-control"
+                                placeholder="8.5"
+                                value={tripForm.fuel_used_l}
+                                onChange={(e) => handleTripChange(vehicle.id, 'fuel_used_l', e.target.value)}
+                                required
+                              />
+                              <span className="input-group-text">L</span>
+                            </div>
+                            <small className="text-muted">Ważne dla analityki efektywności</small>
+                          </div>
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label fw-medium">Opłaty drogowe (autostrady, parkingi)</label>
+                          <div className="input-group input-group-lg">
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              placeholder="0"
+                              value={tripForm.tolls_cost}
+                              onChange={(e) => handleTripChange(vehicle.id, 'tolls_cost', e.target.value)}
+                            />
+                            <span className="input-group-text">PLN</span>
+                          </div>
+                        </div>
+                        <div className="mb-4">
+                          <label className="form-label fw-medium">Notatki</label>
+                          <textarea
+                            className="form-control"
+                            rows="2"
+                            placeholder="Dodatkowe informacje o trasie..."
+                            value={tripForm.notes}
+                            onChange={(e) => handleTripChange(vehicle.id, 'notes', e.target.value)}
+                          ></textarea>
+                        </div>
+                        <button type="submit" className="btn btn-primary btn-lg w-100">
+                          <i className="bi bi-check-circle me-2"></i>Zapisz przejazd
+                        </button>
+                      </form>
                     </div>
-                    <div className="row g-2">
-                      <div className="col">
-                        <label className="form-label small text-muted">Zużycie paliwa (L)</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="10"
-                          title="Ile paliwa zostało zużyte"
-                          value={tripForm.fuel_used_l}
-                          onChange={(e) => handleTripChange(vehicle.id, 'fuel_used_l', e.target.value)}
-                        />
-                      </div>
-                      <div className="col">
-                        <label className="form-label small text-muted">Inne opłaty (PLN)</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="25"
-                          title="Np. opłaty za autostrady"
-                          value={tripForm.tolls_cost}
-                          onChange={(e) => handleTripChange(vehicle.id, 'tolls_cost', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="form-label small text-muted">Notatki</label>
-                      <textarea
-                        className="form-control"
-                        rows="2"
-                        placeholder="Dodaj ważne informacje, np. klient odmówił podpisu"
-                        title="Dowolne uwagi dotyczące przejazdu"
-                        value={tripForm.notes}
-                        onChange={(e) => handleTripChange(vehicle.id, 'notes', e.target.value)}
-                      ></textarea>
-                    </div>
-                    <button type="submit" className="btn btn-primary btn-sm">Zapisz przejazd</button>
-                  </form>
+                  </div>
                 </div>
-                <div className="col-12 col-xxl-4">
-                  <h5 className="h6 mb-3">Zgłoś tankowanie</h5>
-                  <form onSubmit={(event) => handleFuelSubmit(event, vehicle)} className="d-flex flex-column gap-2">
-                    <div className="row g-2">
-                      <div className="col">
-                        <label className="form-label small text-muted">Ilość paliwa (L)</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="45"
-                          title="Ile litrów zostało zatankowanych"
-                          value={fuelForm.liters}
-                          onChange={(e) => handleFuelChange(vehicle.id, 'liters', e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="col">
-                        <label className="form-label small text-muted">Cena za litr (PLN)</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="6.20"
-                          title="Średnia cena paliwa"
-                          value={fuelForm.price_per_liter}
-                          onChange={(e) => handleFuelChange(vehicle.id, 'price_per_liter', e.target.value)}
-                        />
-                      </div>
+                <div className="col-12 col-lg-6">
+                  <div className="card border-0 shadow-sm h-100">
+                    <div className="card-header bg-success text-white py-3">
+                      <h5 className="mb-0 d-flex align-items-center">
+                        <i className="bi bi-fuel-pump me-2"></i>Tankowanie
+                      </h5>
                     </div>
-                    <div className="row g-2">
-                      <div className="col">
-                        <label className="form-label small text-muted">Koszt całkowity (PLN)</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="280"
-                          title="Suma do zapłaty"
-                          value={fuelForm.total_cost}
-                          onChange={(e) => handleFuelChange(vehicle.id, 'total_cost', e.target.value)}
-                        />
-                      </div>
-                      <div className="col">
-                        <label className="form-label small text-muted">Stan licznika (km)</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="15200"
-                          title="Przebieg pojazdu podczas tankowania"
-                          value={fuelForm.odometer}
-                          onChange={(e) => handleFuelChange(vehicle.id, 'odometer', e.target.value)}
-                        />
-                      </div>
+                    <div className="card-body p-4">
+                      <form onSubmit={(event) => handleFuelSubmit(event, vehicle)}>
+                        <div className="row g-3 mb-3">
+                          <div className="col-md-6">
+                            <label className="form-label fw-medium">Ilość paliwa <span className="text-danger">*</span></label>
+                            <div className="input-group input-group-lg">
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="form-control"
+                                placeholder="45"
+                                value={fuelForm.liters}
+                                onChange={(e) => handleFuelChange(vehicle.id, 'liters', e.target.value)}
+                                required
+                              />
+                              <span className="input-group-text">L</span>
+                            </div>
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label fw-medium">Cena za litr</label>
+                            <div className="input-group input-group-lg">
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="form-control"
+                                placeholder="6.20"
+                                value={fuelForm.price_per_liter}
+                                onChange={(e) => handleFuelChange(vehicle.id, 'price_per_liter', e.target.value)}
+                              />
+                              <span className="input-group-text">PLN/L</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="row g-3 mb-3">
+                          <div className="col-md-6">
+                            <label className="form-label fw-medium">Koszt całkowity</label>
+                            <div className="input-group input-group-lg">
+                              <input
+                                type="number"
+                                step="0.01"
+                                className={`form-control ${fuelForm.liters && fuelForm.price_per_liter ? 'bg-success-subtle border-success' : ''}`}
+                                placeholder="280"
+                                value={fuelForm.total_cost}
+                                onChange={(e) => handleFuelChange(vehicle.id, 'total_cost', e.target.value)}
+                                readOnly={!!(fuelForm.liters && fuelForm.price_per_liter)}
+                              />
+                              <span className="input-group-text">PLN</span>
+                            </div>
+                            {fuelForm.liters && fuelForm.price_per_liter && (
+                              <small className="text-success fw-medium"><i className="bi bi-calculator me-1"></i>Obliczono automatycznie</small>
+                            )}
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label fw-medium">Stan licznika</label>
+                            <div className="input-group input-group-lg">
+                              <input
+                                type="number"
+                                className="form-control"
+                                placeholder={vehicle.odometer || '15200'}
+                                value={fuelForm.odometer}
+                                onChange={(e) => handleFuelChange(vehicle.id, 'odometer', e.target.value)}
+                              />
+                              <span className="input-group-text">km</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mb-4">
+                          <label className="form-label fw-medium">Stacja paliw</label>
+                          <input
+                            type="text"
+                            className="form-control form-control-lg"
+                            placeholder="np. Orlen, ul. Główna 15, Warszawa"
+                            value={fuelForm.station}
+                            onChange={(e) => handleFuelChange(vehicle.id, 'station', e.target.value)}
+                          />
+                        </div>
+                        <button type="submit" className="btn btn-success btn-lg w-100">
+                          <i className="bi bi-check-circle me-2"></i>Zapisz tankowanie
+                        </button>
+                      </form>
                     </div>
-                    <div>
-                      <label className="form-label small text-muted">Stacja / lokalizacja</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="np. Orlen, Łódź"
-                        title="Gdzie odbyło się tankowanie"
-                        value={fuelForm.station}
-                        onChange={(e) => handleFuelChange(vehicle.id, 'station', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label small text-muted">Notatki</label>
-                      <textarea
-                        className="form-control"
-                        rows="2"
-                        placeholder="Np. płatność kartą firmową"
-                        title="Dowolne dodatkowe informacje"
-                        value={fuelForm.notes}
-                        onChange={(e) => handleFuelChange(vehicle.id, 'notes', e.target.value)}
-                      ></textarea>
-                    </div>
-                    <button type="submit" className="btn btn-outline-primary btn-sm">Zapisz tankowanie</button>
-                  </form>
-                </div>
-                <div className="col-12 col-xxl-4">
-                  <h5 className="h6 mb-3">Zgłoś problem</h5>
-                  <form onSubmit={(event) => handleIssueSubmit(event, vehicle)} className="d-flex flex-column gap-2">
-                    <select className="form-select" value={issueForm.severity} onChange={(e) => handleIssueChange(vehicle.id, 'severity', e.target.value)}>
-                      <option value="low">Niski</option>
-                      <option value="medium">Średni</option>
-                      <option value="high">Wysoki</option>
-                      <option value="critical">Krytyczny</option>
-                    </select>
-                    <input type="text" className="form-control" placeholder="Tytuł" value={issueForm.title} onChange={(e) => handleIssueChange(vehicle.id, 'title', e.target.value)} required />
-                    <textarea className="form-control" placeholder="Opis" rows="3" value={issueForm.description} onChange={(e) => handleIssueChange(vehicle.id, 'description', e.target.value)} required></textarea>
-                    <button type="submit" className="btn btn-danger btn-sm">Zgłoś problem</button>
-                  </form>
-                </div>
-                <div className="col-12">
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary btn-sm"
-                    onClick={() => openLocationModal(vehicle)}
-                  >
-                    <i className="bi bi-geo-alt me-2"></i>Zmień lokalizację
-                  </button>
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      className="btn btn-outline-danger btn-sm ms-2"
-                      onClick={() => handleDeleteVehicle(vehicle)}
-                      disabled={vehicle.current_driver_id}
-                      title={vehicle.current_driver_id ? 'Nie można usunąć pojazdu przypisanego do pracownika' : 'Usuń pojazd z floty'}
-                    >
-                      <i className="bi bi-trash me-2"></i>Usuń pojazd
-                    </button>
-                  )}
+                  </div>
                 </div>
               </div>
+              <div className="row g-4 mt-2">
+                <div className="col-12 col-lg-6">
+                  <div className="card border-0 shadow-sm">
+                    <div className="card-header bg-danger text-white py-3">
+                      <h5 className="mb-0 d-flex align-items-center">
+                        <i className="bi bi-exclamation-triangle me-2"></i>Zgłoś problem
+                      </h5>
+                    </div>
+                    <div className="card-body p-4">
+                      <form onSubmit={(event) => handleIssueSubmit(event, vehicle)}>
+                        <div className="mb-3">
+                          <label className="form-label fw-medium">Poziom ważności</label>
+                          <select className="form-select form-select-lg" value={issueForm.severity} onChange={(e) => handleIssueChange(vehicle.id, 'severity', e.target.value)}>
+                            <option value="low">🟢 Niski - może poczekać</option>
+                            <option value="medium">🟡 Średni - do załatwienia</option>
+                            <option value="high">🟠 Wysoki - pilne</option>
+                            <option value="critical">🔴 Krytyczny - natychmiast</option>
+                          </select>
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label fw-medium">Tytuł problemu <span className="text-danger">*</span></label>
+                          <input 
+                            type="text" 
+                            className="form-control form-control-lg" 
+                            placeholder="np. Uszkodzone lusterko boczne" 
+                            value={issueForm.title} 
+                            onChange={(e) => handleIssueChange(vehicle.id, 'title', e.target.value)} 
+                            required 
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="form-label fw-medium">Opis szczegółowy <span className="text-danger">*</span></label>
+                          <textarea 
+                            className="form-control" 
+                            placeholder="Opisz dokładnie co się stało, kiedy i w jakich okolicznościach..." 
+                            rows="3" 
+                            value={issueForm.description} 
+                            onChange={(e) => handleIssueChange(vehicle.id, 'description', e.target.value)} 
+                            required
+                          ></textarea>
+                        </div>
+                        <button type="submit" className="btn btn-danger btn-lg w-100">
+                          <i className="bi bi-send me-2"></i>Wyślij zgłoszenie
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-12 col-lg-6">
+                  <div className="card border-0 shadow-sm h-100">
+                    <div className="card-header bg-secondary text-white py-3">
+                      <h5 className="mb-0 d-flex align-items-center">
+                        <i className="bi bi-gear me-2"></i>Zarządzanie pojazdem
+                      </h5>
+                    </div>
+                    <div className="card-body p-4 d-flex flex-column gap-3">
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-lg"
+                        onClick={() => openLocationModal(vehicle)}
+                      >
+                        <i className="bi bi-geo-alt me-2"></i>Zmień lokalizację pojazdu
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-lg"
+                          onClick={() => handleDeleteVehicle(vehicle)}
+                          disabled={vehicle.current_driver_id}
+                          title={vehicle.current_driver_id ? 'Nie można usunąć pojazdu przypisanego do pracownika' : 'Usuń pojazd z floty'}
+                        >
+                          <i className="bi bi-trash me-2"></i>Usuń pojazd z floty
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </>
             )}
             <div className="mt-4">
               <div className="d-flex justify-content-between align-items-center mb-2">
