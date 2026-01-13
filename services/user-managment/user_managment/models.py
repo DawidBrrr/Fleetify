@@ -138,9 +138,7 @@ class WorkerProfile(models.Model):
     def current_presence_state(self) -> str:
         if self.has_active_session():
             return "zalogowany"
-        if self.is_within_scheduled_hours():
-            return "dostepny"
-        return "niedostepny"
+        return "wylogowany"
 
 
 def ensure_profile_for_user(user: User):

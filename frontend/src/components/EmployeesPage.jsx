@@ -15,9 +15,8 @@ const Icons = {
 };
 
 const PRESENCE_UI = {
-  zalogowany: { label: 'Zalogowany', className: 'success' },
-  dostepny: { label: 'Dostępny', className: 'info' },
-  niedostepny: { label: 'Niedostępny', className: 'warning' }
+  zalogowany: { label: 'Zalogowany • Aktywny', className: 'success' },
+  wylogowany: { label: 'Wylogowany • Nieaktywny', className: 'muted' }
 };
 
 function PresenceBadge({ state }) {
@@ -46,12 +45,13 @@ function EmployeeCard({ employee, onAssign, onRemove }) {
         </div>
       </div>
       <div className="vp-employee-card__meta">
-        <span className={`vp-status vp-status--${employee.status === 'active' ? 'success' : 'warning'}`}>
-          <span className="vp-status__dot"></span>
-          {employee.status === 'active' ? 'Aktywny' : employee.status}
-        </span>
-        {employee.worker_profile && (
+        {employee.worker_profile ? (
           <PresenceBadge state={employee.worker_profile.presence_state} />
+        ) : (
+          <span className={`vp-status vp-status--${employee.status === 'active' ? 'success' : 'warning'}`}>
+            <span className="vp-status__dot"></span>
+            {employee.status === 'active' ? 'Aktywny' : employee.status}
+          </span>
         )}
         <span className="vp-employee-card__date">
           {Icons.calendar}

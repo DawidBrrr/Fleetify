@@ -58,9 +58,8 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+    env_file:
+      - rabbitmq.env
 
   vehicle-db:
     build:
@@ -82,11 +81,11 @@ services:
   vehicle-service:
     build:
       context: ./services/vehicle-service
+    env_file:
+      - services/vehicle-service/.env
     environment:
       DATABASE_URL: postgresql://user:password@vehicle-db:5432/vehicle_db
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
     ports:
       - "8001:8000"
     depends_on:
@@ -104,8 +103,6 @@ services:
       - services/dashboard-service/.env
     environment:
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
       ANALYTICS_SERVICE_URL: http://analytics-service:8000
       NOTIFICATIONS_SERVICE_URL: http://notifications-service:8000
     ports:
@@ -192,8 +189,6 @@ services:
       VEHICLE_SERVICE_URL: http://vehicle-service:8000
       USER_MANAGEMENT_URL: http://user-management:8000
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
     ports:
       - "8005:8000"
     depends_on:

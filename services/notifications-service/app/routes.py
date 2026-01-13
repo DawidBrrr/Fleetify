@@ -99,15 +99,33 @@ async def create_vehicle_alert(event_payload: dict, db: Session):
     admins = await fetch_admin_ids()
     if not admins:
         return
+    
+    event_type = event_payload.get("event_type", "vehicle_alert")
+    severity = event_payload.get("severity", "medium")
+    vehicle_label = event_payload.get("vehicle_label", "")
+    vin = event_payload.get("vin", "")
+    
+    # Determine title based on event type
+    if event_type == "vehicle_service_alert":
+        title = f"⚠️ Serwis pojazdu {vehicle_label or vin}"
+        alert_type = "service_alert"
+    elif event_type == "vehicle_issue_created":
+        severity_emoji = "🔴" if severity == "critical" else "🟠" if severity == "high" else "🟡"
+        title = f"{severity_emoji} Problem z pojazdem {vehicle_label or vin}"
+        alert_type = "issue_alert"
+    else:
+        title = f"Alert pojazdu {vehicle_label or vin}"
+        alert_type = "vehicle_alert"
+    
     for admin_id in admins:
         alert = models.Notification(
             recipient_id=UUID(admin_id),
-            type="vehicle_alert",
-            title=f"Alert pojazdu {event_payload.get('vin', '')}",
+            type=alert_type,
+            title=title,
             body=event_payload.get("message", "Wykryto problem z pojazdem"),
             metadata=event_payload,
             status="unread",
-            action_required=False,
+            action_required=severity in ("high", "critical"),
         )
         db.add(alert)
     db.commit()
