@@ -1,22 +1,28 @@
 import apiClient from './client';
 
-export const authApi = {
-  login: (email, password) => apiClient.post('/login', { email, password }),
-};
-
 export const driverApi = {
-  // Pobieranie danych o przypisaniu (z dashboard-service)
   getDashboard: () => apiClient.get('/dashboard/employee'),
   
-  // Aktualizacja licznika (z analytics-service przez dashboard-service)
   updateOdometer: (mileage, battery) => 
-    apiClient.post('/dashboard/employee/vehicle/update', { mileage: mileage.toString(), battery: parseInt(battery) }),
+    apiClient.post('/dashboard/employee/vehicle/update', { 
+      mileage: mileage.toString(), 
+      battery: parseInt(battery) 
+    }),
 
-  // Zgłaszanie usterki (bezpośrednio do vehicle-service przez gateway)
+  // FIX: Usunięto /api/ z początku ścieżki, bo jest w baseURL
   reportIssue: (vehicleId, issueData) => 
     apiClient.post(`/vehicles/${vehicleId}/issues`, issueData),
 
-  // Zapisywanie trasy (do analytics-service przez gateway/dashboard)
-  logTrip: (tripData) => 
-    apiClient.post('/dashboard/trips', tripData),
+  getMyTrips: () => apiClient.get('/dashboard/trips'),
+  
+  // NOWOŚĆ: Dodawanie trasy
+  createTrip: (tripData) => apiClient.post('/dashboard/trips', tripData),
+
+  getMyStats: () => apiClient.get('/dashboard/charts/fleet-summary'),
+  
+  // RAPORTY PDF
+  requestReport: (reportType = 'trips') => 
+    apiClient.post(`/reports/request/${reportType}`, { include_charts: true, include_summary: true }),
+  checkReportStatus: (jobId) => apiClient.get(`/reports/status/${jobId}`),
+  getDownloadUrl: (jobId) => `${apiClient.defaults.baseURL}/reports/download/${jobId}`,
 };
