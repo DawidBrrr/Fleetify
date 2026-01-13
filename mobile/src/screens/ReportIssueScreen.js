@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { TextInput, Button, Text, SegmentedButtons } from 'react-native-paper';
 import { driverApi } from '../api/services';
+import { AuthContext } from '../context/AuthContext';
 import { CONFIG } from '../constants/Config';
 
 export default function ReportIssueScreen({ route, navigation }) {
-  // Pobieramy ID pojazdu przekazane z Dashboardu
   const { vehicleId } = route.params;
+  const { userData } = useContext(AuthContext);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -15,7 +16,7 @@ export default function ReportIssueScreen({ route, navigation }) {
 
   const handleSubmit = async () => {
     if (!title || !description) {
-      Alert.alert("Błąd", "Wypełnij tytuł i opis usterki.");
+      Alert.alert("Błąd", "Wypełnij wszystkie pola.");
       return;
     }
 
@@ -24,14 +25,14 @@ export default function ReportIssueScreen({ route, navigation }) {
       await driverApi.reportIssue(vehicleId, {
         title,
         description,
-        severity,
-        status: 'open'
+        severity, // Wysyła low, medium, high lub critical
+        reporter_id: userData.id
       });
       
-      Alert.alert("Wysłano", "Zgłoszenie zostało zarejestrowane w systemie.");
-      navigation.goBack(); // Powrót do dashboardu
+      Alert.alert("Sukces", "Zgłoszenie zostało wysłane.");
+      navigation.goBack();
     } catch (e) {
-      Alert.alert("Błąd", "Nie udało się wysłać zgłoszenia.");
+      Alert.alert("Błąd", "Serwer odrzucił zgłoszenie. Sprawdź połączenie.");
     } finally {
       setLoading(false);
     }
@@ -39,47 +40,25 @@ export default function ReportIssueScreen({ route, navigation }) {
 
   return (
     <ScrollView style={styles.container}>
-      <Text variant="titleMedium" style={styles.label}>Co się stało?</Text>
-      <TextInput
-        label="Krótki tytuł (np. Wyciek oleju)"
-        value={title}
-        onChangeText={setTitle}
-        mode="outlined"
-        style={styles.input}
-      />
+      <Text variant="titleMedium" style={styles.label}>Co się dzieje?</Text>
+      <TextInput label="Tytuł usterki" value={title} onChangeText={setTitle} mode="outlined" style={styles.input} />
+      <TextInput label="Opis problemu" value={description} onChangeText={setDescription} mode="outlined" multiline numberOfLines={4} style={styles.input} />
 
-      <Text variant="titleMedium" style={styles.label}>Opis problemu</Text>
-      <TextInput
-        label="Opisz szczegóły usterki..."
-        value={description}
-        onChangeText={setDescription}
-        mode="outlined"
-        multiline
-        numberOfLines={5}
-        style={styles.input}
-      />
-
-      <Text variant="titleMedium" style={styles.label}>Priorytet</Text>
+      <Text style={styles.label}>Ważność (Severity):</Text>
       <SegmentedButtons
         value={severity}
         onValueChange={setSeverity}
         buttons={[
-          { value: 'low', label: 'Niski' },
-          { value: 'medium', label: 'Średni' },
-          { value: 'high', label: 'Wysoki' },
+          { value: 'low', label: 'Info', icon: 'check' },
+          { value: 'medium', label: 'Średnia', icon: 'alert-circle' },
+          { value: 'high', label: 'Wysoka', icon: 'alert' },
+          { value: 'critical', label: 'PILNE', icon: 'fire' },
         ]}
         style={styles.segmented}
       />
 
-      <Button 
-        mode="contained" 
-        onPress={handleSubmit}
-        loading={loading}
-        disabled={loading}
-        buttonColor={CONFIG.COLORS.danger}
-        style={styles.button}
-      >
-        Wyślij zgłoszenie
+      <Button mode="contained" onPress={handleSubmit} loading={loading} buttonColor={CONFIG.COLORS.danger} style={styles.button}>
+        Zgłoś awarię
       </Button>
     </ScrollView>
   );
@@ -87,8 +66,8 @@ export default function ReportIssueScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: CONFIG.COLORS.ice },
-  label: { marginBottom: 10, marginTop: 15, color: CONFIG.COLORS.navy, fontWeight: 'bold' },
-  input: { backgroundColor: '#fff', marginBottom: 10 },
+  label: { marginVertical: 10, fontWeight: 'bold', color: CONFIG.COLORS.navy },
+  input: { backgroundColor: '#fff', marginBottom: 15 },
   segmented: { marginBottom: 30 },
-  button: { paddingVertical: 8, borderRadius: 10 }
+  button: { borderRadius: 10, paddingVertical: 5 }
 });
