@@ -1,5 +1,6 @@
 CREATE TABLE vehicles (
     id SERIAL PRIMARY KEY,
+    owner_id VARCHAR(50) NOT NULL, -- Admin user ID who owns this vehicle
     vin VARCHAR(17) UNIQUE NOT NULL,
     make VARCHAR(50) NOT NULL,
     model VARCHAR(50) NOT NULL,

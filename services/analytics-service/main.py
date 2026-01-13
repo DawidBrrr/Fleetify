@@ -615,10 +615,46 @@ def get_admin_costs(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    user_id = current_user['id']
-    costs = db.query(models.UserCost).filter(models.UserCost.user_id == user_id).all()
-    # Transform to dictionary format expected by frontend
-    return {cost.category: cost.amount for cost in costs}
+    """Get real costs from last 30 days - fuel costs from fuel logs, tolls from trip logs"""
+    from datetime import timedelta
+    
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    
+    # Sum fuel costs from fuel logs (last 30 days)
+    fuel_total = float(db.query(sql_func.sum(models.FuelLog.total_cost)).filter(
+        models.FuelLog.created_at >= thirty_days_ago
+    ).scalar() or 0)
+    
+    # Sum tolls from trip logs (last 30 days)
+    tolls_total = float(db.query(sql_func.sum(models.TripLog.tolls_cost)).filter(
+        models.TripLog.created_at >= thirty_days_ago
+    ).scalar() or 0)
+    
+    # Total distance for context
+    total_distance = float(db.query(sql_func.sum(models.TripLog.distance_km)).filter(
+        models.TripLog.created_at >= thirty_days_ago
+    ).scalar() or 0)
+    
+    # Trip count
+    trip_count = db.query(sql_func.count(models.TripLog.id)).filter(
+        models.TripLog.created_at >= thirty_days_ago
+    ).scalar() or 0
+    
+    total = fuel_total + tolls_total
+    
+    return {
+        "period": "30 dni",
+        "total": round(total, 2),
+        "breakdown": [
+            {"category": "Paliwo", "amount": round(fuel_total, 2), "icon": "bi-fuel-pump"},
+            {"category": "Opłaty drogowe", "amount": round(tolls_total, 2), "icon": "bi-signpost-2"},
+        ],
+        "stats": {
+            "total_distance_km": round(total_distance, 1),
+            "trip_count": trip_count,
+            "avg_cost_per_km": round(total / total_distance, 2) if total_distance > 0 else 0
+        }
+    }
 
 @app.get("/analytics/admin/alerts")
 def get_admin_alerts(

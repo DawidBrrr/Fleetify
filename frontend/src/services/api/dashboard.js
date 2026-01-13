@@ -113,6 +113,14 @@ export const dashboardApi = {
 		return handleResponse(response, "Failed to remove employee");
 	},
 
+	deleteVehicle: async (vehicleId) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/${vehicleId}`, {
+			method: "DELETE",
+			headers: getDefaultHeaders(),
+		});
+		return handleResponse(response, "Failed to delete vehicle");
+	},
+
 	updateVehicleLocation: async (vehicleId, payload) => {
 		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/${vehicleId}/location`, {
 			method: "POST",
