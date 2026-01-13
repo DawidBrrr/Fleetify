@@ -8,6 +8,7 @@ class Vehicle(Base):
     __tablename__ = "vehicles"
 
     id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(String, nullable=False, index=True)  # Admin user ID who owns this vehicle
     vin = Column(String, unique=True, index=True)
     make = Column(String)
     model = Column(String)
