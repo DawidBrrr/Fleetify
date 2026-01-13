@@ -27,7 +27,7 @@ DEBUG = True
 
 #TODO
 #IMPORTANT : Update this in production
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'user-management']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
