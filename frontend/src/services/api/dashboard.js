@@ -130,6 +130,15 @@ export const dashboardApi = {
 		return handleResponse(response, "Failed to update vehicle location");
 	},
 
+	updateVehicleService: async (vehicleId, payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/${vehicleId}/service`, {
+			method: "POST",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to update vehicle service date");
+	},
+
 	assignTask: async (assignmentData) => {
 		const response = await fetch(`${API_BASE_URL}/api/dashboard/assignments`, {
 			method: "POST",
