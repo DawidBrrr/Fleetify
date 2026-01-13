@@ -303,20 +303,26 @@ export default function VehiclesPage({ role = 'admin', user }) {
   };
 
   const reverseGeocodeLocation = async (vehicleId, lat, lng) => {
-    if (lat === undefined || lng === undefined || Number.isNaN(lat) || Number.isNaN(lng)) {
+    if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
       return;
     }
     setLocationLookups((prev) => ({ ...prev, [vehicleId]: 'loading' }));
     try {
+      const latNum = Number(lat);
+      const lngNum = Number(lng);
+      if (Number.isNaN(latNum) || Number.isNaN(lngNum)) {
+        setLocationLookups((prev) => ({ ...prev, [vehicleId]: 'error' }));
+        return;
+      }
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=pl&zoom=10`,
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latNum.toFixed(6)}&lon=${lngNum.toFixed(6)}&accept-language=pl&zoom=10`,
         { headers: { Accept: 'application/json' } }
       );
       const data = await response.json();
       const cityName = extractCityName(data?.address || {}) || (data?.display_name || '').split(',')[0] || '';
       setLocationFormValues(vehicleId, {
-        latitude: Number(lat.toFixed ? lat.toFixed(6) : lat),
-        longitude: Number(lng.toFixed ? lng.toFixed(6) : lng),
+        latitude: Number(latNum.toFixed(6)),
+        longitude: Number(lngNum.toFixed(6)),
         city: cityName || (locationForms[vehicleId]?.city || ''),
       });
       setLocationLookups((prev) => ({ ...prev, [vehicleId]: cityName ? 'ready' : 'no-city' }));
