@@ -44,6 +44,8 @@ yarn-error.log*
 .env*.local
 .env
 .envrc
+*.env
+rabbitmq.env
 .python-version
 .env.test
 .env.development

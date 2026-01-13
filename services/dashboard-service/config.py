@@ -13,5 +13,5 @@ USER_MANAGEMENT_URL = os.getenv("USER_MANAGEMENT_URL", "http://user-management:8
 NOTIFICATIONS_SERVICE_URL = os.getenv("NOTIFICATIONS_SERVICE_URL", "http://notifications-service:8000")
 NOTIFICATIONS_SERVICE_TOKEN = os.getenv("NOTIFICATIONS_SERVICE_TOKEN", "")
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
-RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
-RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
+RABBITMQ_USER = os.getenv("RABBITMQ_USER")
+RABBITMQ_PASS = os.getenv("RABBITMQ_PASS")

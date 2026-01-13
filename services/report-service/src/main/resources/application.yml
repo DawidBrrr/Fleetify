@@ -12,8 +12,8 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:rabbitmq}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASS:guest}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASS}
     listener:
       simple:
         concurrency: 2
