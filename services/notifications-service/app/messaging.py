@@ -9,8 +9,15 @@ from .database import SessionLocal
 from .routes import create_vehicle_alert
 
 ALERT_STATUSES = {"maintenance", "issue", "alert"}
+ALERT_EVENT_TYPES = {"vehicle_issue_created", "vehicle_service_alert"}
 
 def should_raise_alert(payload: dict) -> bool:
+    event_type = payload.get("event_type")
+    
+    # Always raise alert for specific event types
+    if event_type in ALERT_EVENT_TYPES:
+        return True
+    
     updates = payload.get("updates", {}) or {}
     if isinstance(updates, dict):
         status = updates.get("status")

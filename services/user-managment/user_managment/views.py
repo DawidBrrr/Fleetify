@@ -17,7 +17,7 @@ from .serializers import LoginSerializer, RegistrationSerializer, UserSerializer
 # Security logger for audit events
 security_logger = logging.getLogger('user_managment.security')
 
-SESSION_TTL = timedelta(days=7)
+SESSION_TTL = timedelta(hours=1)
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 

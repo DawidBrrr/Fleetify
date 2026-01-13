@@ -12,6 +12,6 @@ USER_MANAGEMENT_URL = os.getenv("USER_MANAGEMENT_URL", "http://user-management:8
 
 # RabbitMQ config
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
-RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
-RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
+RABBITMQ_USER = os.getenv("RABBITMQ_USER")
+RABBITMQ_PASS = os.getenv("RABBITMQ_PASS")
 ANALYTICS_QUEUE = os.getenv("ANALYTICS_QUEUE", "analytics_events")

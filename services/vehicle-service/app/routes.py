@@ -64,6 +64,8 @@ def _serialize_updates(updates: Dict[str, Any]) -> Dict[str, Any]:
 
 def _emit_vehicle_event(event_name: str, vehicle: models.Vehicle, extra: Optional[Dict[str, Any]] = None) -> None:
     payload = _serialize_vehicle(vehicle)
+    payload["event_type"] = event_name
+    payload["vehicle_label"] = f"{vehicle.make} {vehicle.model}"
     if extra:
         payload.update(extra)
     messaging.publish_message(event_name, payload)
@@ -179,6 +181,29 @@ async def update_vehicle(
 
     _emit_vehicle_event("vehicle_updated", db_vehicle, {"updates": _serialize_updates(update_data)})
 
+    # Check if service date update requires an alert
+    if "last_service_date" in update_data and db_vehicle.last_service_date:
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        service_date = db_vehicle.last_service_date
+        if service_date.tzinfo is None:
+            service_date = service_date.replace(tzinfo=timezone.utc)
+        one_year = service_date + timedelta(days=365)
+        days_remaining = (one_year - now).days
+        
+        if days_remaining < 0:
+            _emit_vehicle_event("vehicle_service_alert", db_vehicle, {
+                "severity": "critical",
+                "message": f"Serwis przeterminowany o {abs(days_remaining)} dni!",
+                "days_remaining": days_remaining,
+            })
+        elif days_remaining <= 30:
+            _emit_vehicle_event("vehicle_service_alert", db_vehicle, {
+                "severity": "high",
+                "message": f"Serwis za {days_remaining} dni",
+                "days_remaining": days_remaining,
+            })
+
     return db_vehicle
 
 
@@ -275,6 +300,11 @@ async def create_vehicle_issue(
         description=payload.description,
     )
     db.add(issue)
+    
+    # Auto-set vehicle to maintenance if issue is high or critical severity
+    if issue.severity in ("high", "critical"):
+        vehicle.status = "maintenance"
+    
     db.commit()
     db.refresh(issue)
     event_payload = {
@@ -366,6 +396,23 @@ async def update_vehicle_issue(
     updates = payload.dict(exclude_unset=True)
     for field, value in updates.items():
         setattr(issue, field, value)
+    
+    # Auto-restore vehicle to available when issue is resolved
+    if issue.status == "resolved" and vehicle.status == "maintenance":
+        # Check if there are no other open high/critical issues
+        open_critical_issues = (
+            db.query(models.VehicleIssue)
+            .filter(
+                models.VehicleIssue.vehicle_id == vehicle_id,
+                models.VehicleIssue.id != issue_id,
+                models.VehicleIssue.status != "resolved",
+                models.VehicleIssue.severity.in_(["high", "critical"])
+            )
+            .count()
+        )
+        if open_critical_issues == 0:
+            vehicle.status = "available"
+    
     db.commit()
     db.refresh(issue)
     event_updates = _serialize_updates(updates)

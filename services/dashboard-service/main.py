@@ -135,11 +135,12 @@ async def send_service_notification(payload: dict):
 async def get_admin_dashboard(authorization: str = Header(None)):
     stats = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/stats", authorization)
     costs = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/costs", authorization)
-    alerts = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/admin/alerts", authorization)
-    recent_trips = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/trips?limit=5", authorization)
-    recent_fuel_logs = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/fuel-logs?limit=5", authorization)
+    recent_trips = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/trips?limit=100", authorization)
+    recent_fuel_logs = await fetch_data(ANALYTICS_SERVICE_URL, "/analytics/fuel-logs?limit=100", authorization)
     
     # Fetch real vehicles from Vehicle Service instead of Analytics Service mock
+    alerts = []
+    alert_id = 1
     try:
         vehicles = await fetch_data(VEHICLE_SERVICE_URL, "/vehicles/", authorization)
         # Transform vehicle data to match fleet health format if needed
@@ -148,6 +149,53 @@ async def get_admin_dashboard(authorization: str = Header(None)):
         for v in vehicles:
             issues = v.get("issues") or []
             open_count = sum(1 for issue in issues if issue.get("status") != "resolved")
+            vehicle_label = f"{v['make']} {v['model']}"
+            
+            # Generate service alerts
+            last_service = v.get("last_service_date")
+            if last_service:
+                from datetime import datetime, timedelta
+                try:
+                    service_date = datetime.fromisoformat(last_service.replace('Z', '+00:00'))
+                    now = datetime.now(service_date.tzinfo) if service_date.tzinfo else datetime.utcnow()
+                    one_year = service_date + timedelta(days=365)
+                    days_remaining = (one_year - now).days
+                    
+                    if days_remaining < 0:
+                        alerts.append({
+                            "id": alert_id,
+                            "type": "Serwis przeterminowany",
+                            "message": f"{vehicle_label} - serwis przeterminowany o {abs(days_remaining)} dni!",
+                            "severity": "danger",
+                            "vehicle_id": v["id"],
+                        })
+                        alert_id += 1
+                    elif days_remaining <= 30:
+                        alerts.append({
+                            "id": alert_id,
+                            "type": "Serwis wkrótce",
+                            "message": f"{vehicle_label} - serwis za {days_remaining} dni",
+                            "severity": "warning",
+                            "vehicle_id": v["id"],
+                        })
+                        alert_id += 1
+                except (ValueError, TypeError):
+                    pass
+            
+            # Generate issue alerts for high/critical
+            for issue in issues:
+                if issue.get("status") != "resolved" and issue.get("severity") in ("high", "critical"):
+                    severity_label = "Krytyczny" if issue.get("severity") == "critical" else "Wysoki"
+                    alerts.append({
+                        "id": alert_id,
+                        "type": f"Problem - {severity_label}",
+                        "message": f"{vehicle_label}: {issue.get('title', 'Problem z pojazdem')}",
+                        "severity": "danger" if issue.get("severity") == "critical" else "warning",
+                        "vehicle_id": v["id"],
+                        "issue_id": issue.get("id"),
+                    })
+                    alert_id += 1
+            
             fleet_health.append({
                 "id": v["id"],
                 "model": f"{v['make']} {v['model']}",
@@ -272,6 +320,22 @@ async def update_vehicle_location(
             "latitude": payload.get("latitude"),
             "longitude": payload.get("longitude"),
             "city": payload.get("city"),
+        },
+        authorization,
+    )
+
+
+@app.post("/dashboard/vehicles/{vehicle_id}/service")
+async def update_vehicle_service(
+    vehicle_id: int,
+    payload: Dict[str, Any] = Body(...),
+    authorization: str = Header(None),
+):
+    return await put_data(
+        VEHICLE_SERVICE_URL,
+        f"/vehicles/{vehicle_id}",
+        {
+            "last_service_date": payload.get("last_service_date"),
         },
         authorization,
     )
