@@ -16,6 +16,5 @@ export function getDefaultHeaders() {
     return {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
     };
 }
