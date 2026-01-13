@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,6 +29,11 @@ DEBUG = True
 #TODO
 #IMPORTANT : Update this in production
 ALLOWED_HOSTS = ['*']
+
+# Add Gateway IP from environment variable if set
+gateway_ip = os.environ.get('GATEWAY_IP_ADDRESS')
+if gateway_ip:
+    ALLOWED_HOSTS.append(gateway_ip)
 
 
 # Application definition

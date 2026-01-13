@@ -31,9 +31,8 @@ const Icons = {
 /*  Presence UI                                              */
 /* ───────────────────────────────────────────────────────── */
 const PRESENCE_UI = {
-  zalogowany: { label: "Zalogowany", variant: "success" },
-  dostepny: { label: "Dostępny", variant: "info" },
-  niedostepny: { label: "Niedostępny", variant: "muted" },
+  zalogowany: { label: "Zalogowany • Aktywny", variant: "success" },
+  wylogowany: { label: "Wylogowany • Nieaktywny", variant: "muted" },
 };
 
 function PresenceBadge({ state }) {
@@ -203,12 +202,8 @@ export default function TeamPage() {
               <span>Aktywny</span>
             </div>
             <div className="vp-presence-legend__item">
-              <span className="vp-status vp-status--info">Dostępny</span>
-              <span>W godzinach pracy</span>
-            </div>
-            <div className="vp-presence-legend__item">
-              <span className="vp-status vp-status--muted">Niedostępny</span>
-              <span>Poza godzinami</span>
+              <span className="vp-status vp-status--muted">Wylogowany</span>
+              <span>Nieaktywny</span>
             </div>
           </div>
         </div>

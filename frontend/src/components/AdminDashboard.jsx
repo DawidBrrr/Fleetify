@@ -1,6 +1,38 @@
 import React, { useState } from 'react';
 import { dashboardApi } from '../services/api/dashboard';
 
+// Modal for scrollable lists
+function ListModal({ isOpen, onClose, title, icon, children, filterOptions, currentFilter, onFilterChange }) {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="vp-modal-overlay" onClick={onClose}>
+      <div className="vp-modal vp-modal--list" onClick={(e) => e.stopPropagation()}>
+        <div className="vp-modal__header">
+          <h3 className="vp-modal__title">{icon} {title}</h3>
+          <button className="vp-modal__close" onClick={onClose}>×</button>
+        </div>
+        {filterOptions && (
+          <div className="vp-modal__filters">
+            {filterOptions.map((opt) => (
+              <button
+                key={opt.value}
+                className={`vp-filter-btn ${currentFilter === opt.value ? 'vp-filter-btn--active' : ''}`}
+                onClick={() => onFilterChange(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="vp-modal__body vp-modal__body--scrollable">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // SVG Icons
 const Icons = {
   truck: (
@@ -220,7 +252,7 @@ function AlertPill({ alert }) {
     <div className={`vp-alert-pill vp-alert-pill--${alert.severity}`}>
       <div className="vp-alert-pill__icon">{severityIcons[alert.severity] || Icons.alert}</div>
       <div className="vp-alert-pill__content">
-        <strong>{alert.type}</strong>
+        <strong>{alert.type}:</strong>{' '}
         <span>{alert.message}</span>
       </div>
     </div>
@@ -230,6 +262,18 @@ function AlertPill({ alert }) {
 export default function AdminDashboard({ data, user, onLogout, showLogoutButton = true }) {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportProgress, setReportProgress] = useState(null);
+  
+  // Modal states
+  const [alertsModal, setAlertsModal] = useState(false);
+  const [alertsFilter, setAlertsFilter] = useState(20);
+  const [fleetModal, setFleetModal] = useState(false);
+  const [fleetFilter, setFleetFilter] = useState(20);
+  const [maintenanceModal, setMaintenanceModal] = useState(false);
+  const [maintenanceFilter, setMaintenanceFilter] = useState(20);
+  const [tripsModal, setTripsModal] = useState(false);
+  const [tripsFilter, setTripsFilter] = useState(20);
+  const [fuelModal, setFuelModal] = useState(false);
+  const [fuelFilter, setFuelFilter] = useState(20);
 
   if (!data) return null;
 
@@ -238,6 +282,30 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
   const recentTrips = data.recentTrips || [];
   const recentFuelLogs = data.recentFuelLogs || [];
   const issueSummary = data.issueSummary || { open: 0, byVehicle: [] };
+  const alerts = data.alerts || [];
+  
+  // Sort fleet - in_use (assigned) first, then available, then maintenance at bottom
+  const fleetHealth = [...(data.fleetHealth || [])].sort((a, b) => {
+    const statusOrder = { in_use: 0, available: 1, maintenance: 2 };
+    return (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3);
+  });
+  
+  // Display limits
+  const ALERT_LIMIT = 3;
+  const FLEET_LIMIT = 10;
+  const MAINTENANCE_LIMIT = 3;
+  const TRIPS_LIMIT = 5;
+  const FUEL_LIMIT = 4;
+  
+  // Filter options
+  const filterOptions = [
+    { value: 20, label: 'Ostatnie 20' },
+    { value: 50, label: 'Ostatnie 50' },
+    { value: 100, label: 'Ostatnie 100' },
+    { value: 0, label: 'Wszystkie' },
+  ];
+  
+  const applyFilter = (items, filter) => filter === 0 ? items : items.slice(0, filter);
 
   const handleDownloadFleetReport = async () => {
     setReportLoading(true);
@@ -355,21 +423,34 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                   </tr>
                 </thead>
                 <tbody>
-                  {data.fleetHealth.map((vehicle) => (
+                  {fleetHealth.slice(0, FLEET_LIMIT).map((vehicle) => (
                     <FleetRow key={vehicle.id} item={vehicle} />
                   ))}
                 </tbody>
               </table>
+              {fleetHealth.length > FLEET_LIMIT && (
+                <div 
+                  className="vp-panel__more-link" 
+                  style={{ padding: '12px', textAlign: 'center', cursor: 'pointer' }}
+                  onClick={() => setFleetModal(true)}
+                >
+                  Pokaż wszystkie pojazdy ({fleetHealth.length})
+                </div>
+              )}
             </div>
           </div>
         </div>
         <div className="col-12 col-xl-5 d-flex flex-column gap-3">
-          <div className="vp-panel">
+          <div className="vp-panel vp-panel--clickable" onClick={() => alerts.length > ALERT_LIMIT && setAlertsModal(true)}>
             <div className="vp-panel__header">
               <h3 className="vp-panel__title">{Icons.alert} Alerty</h3>
+              {alerts.length > ALERT_LIMIT && (
+                <span className="vp-panel__more">+{alerts.length - ALERT_LIMIT} więcej</span>
+              )}
             </div>
             <div className="d-flex flex-column gap-2">
-              {data.alerts.map((alert) => (
+              {alerts.length === 0 && <span className="vp-hint">Brak alertów</span>}
+              {alerts.slice(0, ALERT_LIMIT).map((alert) => (
                 <AlertPill key={alert.id} alert={alert} />
               ))}
             </div>
@@ -427,7 +508,7 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
               </div>
             )}
           </div>
-          <div className="vp-panel">
+          <div className="vp-panel vp-panel--clickable" onClick={() => issueSummary.byVehicle.length > MAINTENANCE_LIMIT && setMaintenanceModal(true)}>
             <div className="vp-panel__header">
               <h3 className="vp-panel__title">{Icons.wrench} Utrzymanie</h3>
               <span className="vp-status vp-status--danger">
@@ -437,7 +518,7 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
             </div>
             <div className="d-flex flex-column gap-2">
               {issueSummary.byVehicle.length === 0 && <span className="vp-hint">Brak aktywnych zgłoszeń</span>}
-              {issueSummary.byVehicle.map((item) => (
+              {issueSummary.byVehicle.slice(0, MAINTENANCE_LIMIT).map((item) => (
                 <div key={item.vehicle_id} className="vp-maintenance-row">
                   <div className="vp-maintenance-row__info">
                     <span className="vp-maintenance-row__label">{item.vehicle_label}</span>
@@ -449,6 +530,9 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                   </span>
                 </div>
               ))}
+              {issueSummary.byVehicle.length > MAINTENANCE_LIMIT && (
+                <span className="vp-panel__more-link">Pokaż wszystkie ({issueSummary.byVehicle.length})</span>
+              )}
             </div>
           </div>
         </div>
@@ -456,7 +540,7 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
 
       <div className="row g-3 mt-1">
         <div className="col-12 col-xl-7">
-          <div className="vp-panel vp-panel--full">
+          <div className="vp-panel vp-panel--full vp-panel--clickable" onClick={() => recentTrips.length > TRIPS_LIMIT && setTripsModal(true)}>
             <div className="vp-panel__header">
               <h3 className="vp-panel__title">{Icons.route} Ostatnie przejazdy</h3>
               <span className="vp-status vp-status--info">
@@ -482,7 +566,7 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                       </td>
                     </tr>
                   )}
-                  {recentTrips.map((trip) => (
+                  {recentTrips.slice(0, TRIPS_LIMIT).map((trip) => (
                     <tr key={trip.id} className="vp-table-row">
                       <td>
                         <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{trip.vehicle_label || trip.route_label || "Nieznana trasa"}</span>
@@ -494,11 +578,16 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                   ))}
                 </tbody>
               </table>
+              {recentTrips.length > TRIPS_LIMIT && (
+                <div className="vp-panel__more-link" style={{ padding: '12px', textAlign: 'center' }}>
+                  Pokaż wszystkie ({recentTrips.length})
+                </div>
+              )}
             </div>
           </div>
         </div>
         <div className="col-12 col-xl-5">
-          <div className="vp-panel vp-panel--full">
+          <div className="vp-panel vp-panel--full vp-panel--clickable" onClick={() => recentFuelLogs.length > FUEL_LIMIT && setFuelModal(true)}>
             <div className="vp-panel__header">
               <h3 className="vp-panel__title">{Icons.fuel} Tankowania</h3>
               <span className="vp-status vp-status--success">
@@ -508,7 +597,7 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
             </div>
             <div className="d-flex flex-column gap-2">
               {recentFuelLogs.length === 0 && <span className="vp-hint">Brak tankowań</span>}
-              {recentFuelLogs.map((log) => (
+              {recentFuelLogs.slice(0, FUEL_LIMIT).map((log) => (
                 <div key={log.id} className="vp-fuel-card">
                   <div className="vp-fuel-card__header">
                     <div>
@@ -524,10 +613,150 @@ export default function AdminDashboard({ data, user, onLogout, showLogoutButton 
                   </div>
                 </div>
               ))}
+              {recentFuelLogs.length > FUEL_LIMIT && (
+                <span className="vp-panel__more-link">Pokaż wszystkie ({recentFuelLogs.length})</span>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <ListModal
+        isOpen={alertsModal}
+        onClose={() => setAlertsModal(false)}
+        title="Wszystkie alerty"
+        icon={Icons.alert}
+        filterOptions={filterOptions}
+        currentFilter={alertsFilter}
+        onFilterChange={setAlertsFilter}
+      >
+        <div className="d-flex flex-column gap-2">
+          {applyFilter(alerts, alertsFilter).map((alert) => (
+            <AlertPill key={alert.id} alert={alert} />
+          ))}
+        </div>
+      </ListModal>
+
+      <ListModal
+        isOpen={maintenanceModal}
+        onClose={() => setMaintenanceModal(false)}
+        title="Utrzymanie pojazdów"
+        icon={Icons.wrench}
+        filterOptions={filterOptions}
+        currentFilter={maintenanceFilter}
+        onFilterChange={setMaintenanceFilter}
+      >
+        <div className="d-flex flex-column gap-2">
+          {applyFilter(issueSummary.byVehicle, maintenanceFilter).map((item) => (
+            <div key={item.vehicle_id} className="vp-maintenance-row">
+              <div className="vp-maintenance-row__info">
+                <span className="vp-maintenance-row__label">{item.vehicle_label}</span>
+                <span className="vp-maintenance-row__date">{Icons.clock} Serwis: {formatDate(item.last_service_date)}</span>
+              </div>
+              <span className="vp-status vp-status--danger">
+                <span className="vp-status__dot"></span>
+                {item.open_issues} zgłosz.
+              </span>
+            </div>
+          ))}
+        </div>
+      </ListModal>
+
+      <ListModal
+        isOpen={tripsModal}
+        onClose={() => setTripsModal(false)}
+        title="Wszystkie przejazdy"
+        icon={Icons.route}
+        filterOptions={filterOptions}
+        currentFilter={tripsFilter}
+        onFilterChange={setTripsFilter}
+      >
+        <div className="vp-table-wrapper">
+          <table className="vp-table">
+            <thead>
+              <tr>
+                <th>Pojazd / Trasa</th>
+                <th>Dystans</th>
+                <th>Spalone paliwo</th>
+                <th>Notatka</th>
+              </tr>
+            </thead>
+            <tbody>
+              {applyFilter(recentTrips, tripsFilter).map((trip) => (
+                <tr key={trip.id} className="vp-table-row">
+                  <td>
+                    <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{trip.vehicle_label || trip.route_label || "Nieznana trasa"}</span>
+                  </td>
+                  <td style={{ fontSize: '0.82rem' }}>{trip.distance_km ? `${trip.distance_km} km` : "—"}</td>
+                  <td style={{ fontSize: '0.82rem' }}>{trip.fuel_used_l ? `${trip.fuel_used_l} L` : "—"}</td>
+                  <td className="vp-hint">{trip.notes || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </ListModal>
+
+      <ListModal
+        isOpen={fuelModal}
+        onClose={() => setFuelModal(false)}
+        title="Wszystkie tankowania"
+        icon={Icons.fuel}
+        filterOptions={filterOptions}
+        currentFilter={fuelFilter}
+        onFilterChange={setFuelFilter}
+      >
+        <div className="d-flex flex-column gap-2">
+          {applyFilter(recentFuelLogs, fuelFilter).map((log) => (
+            <div key={log.id} className="vp-fuel-card">
+              <div className="vp-fuel-card__header">
+                <div>
+                  <span className="vp-fuel-card__label">{log.vehicle_label || "Pojazd"}</span>
+                  <span className="vp-fuel-card__date">{Icons.clock} {formatDate(log.created_at)}</span>
+                </div>
+                <span className="vp-fuel-card__cost">{log.total_cost ? `${log.total_cost} zł` : "—"}</span>
+              </div>
+              <div className="vp-fuel-card__meta">
+                <span>{Icons.fuel} {log.liters ? `${log.liters} L` : "—"}</span>
+                <span>{Icons.location} {log.station || "Stacja nieznana"}</span>
+                {log.odometer && <span>{log.odometer} km</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </ListModal>
+
+      <ListModal
+        isOpen={fleetModal}
+        onClose={() => setFleetModal(false)}
+        title="Wszystkie pojazdy"
+        icon={Icons.truck}
+        filterOptions={filterOptions}
+        currentFilter={fleetFilter}
+        onFilterChange={setFleetFilter}
+      >
+        <div className="vp-table-wrapper">
+          <table className="vp-table">
+            <thead>
+              <tr>
+                <th>Pojazd</th>
+                <th>Model</th>
+                <th>Status</th>
+                <th>Lokalizacja</th>
+                <th>Paliwo / Energia</th>
+                <th>Serwis</th>
+                <th>Alerty</th>
+              </tr>
+            </thead>
+            <tbody>
+              {applyFilter(fleetHealth, fleetFilter).map((vehicle) => (
+                <FleetRow key={vehicle.id} item={vehicle} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </ListModal>
     </div>
   );
 }

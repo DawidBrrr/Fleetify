@@ -27,14 +27,14 @@ server {
         include /etc/nginx/includes/proxy.conf;
     }
 
-    # Auth Service Routes
+    # Auth Service Routes (PUBLIC - nie wymaga autoryzacji)
     location ~ ^/api/(login|register|refresh|logout)$ {
         include /etc/nginx/includes/cors.conf;
         include /etc/nginx/includes/proxy.conf;
         include /etc/nginx/includes/rate-limit.conf;
         
+        # Tylko HMAC signing, BEZ sprawdzania auth (login nie ma jeszcze tokena)
         access_by_lua_block {
-            assert(loadfile("/etc/nginx/lua/auth.lua"))()
             assert(loadfile("/etc/nginx/lua/sign.lua"))()
         }
         
