@@ -136,6 +136,60 @@ const formatDate = (value) => {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('pl-PL');
 };
 
+const formatTimeAgo = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return 'w przyszłości';
+  if (diffDays === 0) return 'dziś';
+  if (diffDays === 1) return '1 dzień temu';
+  if (diffDays < 7) return `${diffDays} dni temu`;
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return weeks === 1 ? '1 tydzień temu' : `${weeks} tygodnie temu`;
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return months === 1 ? '1 miesiąc temu' : `${months} miesięcy temu`;
+  }
+  const years = Math.floor(diffDays / 365);
+  return years === 1 ? '1 rok temu' : `${years} lata temu`;
+};
+
+const getServiceStatus = (lastServiceDate) => {
+  if (!lastServiceDate) return { status: 'unknown', label: 'Brak danych', daysRemaining: null };
+  const date = new Date(lastServiceDate);
+  if (Number.isNaN(date.getTime())) return { status: 'unknown', label: 'Brak danych', daysRemaining: null };
+  
+  const now = new Date();
+  const oneYearFromService = new Date(date);
+  oneYearFromService.setFullYear(oneYearFromService.getFullYear() + 1);
+  
+  const diffMs = oneYearFromService - now;
+  const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (daysRemaining < 0) {
+    return { status: 'overdue', label: 'Przeterminowany!', daysRemaining };
+  }
+  if (daysRemaining <= 30) {
+    return { status: 'warning', label: `Serwis za ${daysRemaining} dni`, daysRemaining };
+  }
+  if (daysRemaining <= 90) {
+    return { status: 'upcoming', label: `Serwis za ${daysRemaining} dni`, daysRemaining };
+  }
+  return { status: 'ok', label: `Serwis za ${daysRemaining} dni`, daysRemaining };
+};
+
+const createServiceForm = () => ({
+  service_date: '',
+  notes: '',
+});
+
 const createTripForm = () => ({
   route_label: '',
   distance_km: '',
@@ -249,6 +303,7 @@ export default function VehiclesPage({ role = 'admin', user }) {
   const [tripForms, setTripForms] = useState({});
   const [fuelForms, setFuelForms] = useState({});
   const [issueForms, setIssueForms] = useState({});
+  const [serviceForms, setServiceForms] = useState({});
   const [banner, setBanner] = useState(null);
   const [locationModalVehicle, setLocationModalVehicle] = useState(null);
   const [locationForms, setLocationForms] = useState({});
@@ -463,6 +518,7 @@ export default function VehiclesPage({ role = 'admin', user }) {
 
   const handleTripChange = updateFormState(setTripForms, createTripForm);
   const handleIssueChange = updateFormState(setIssueForms, createIssueForm);
+  const handleServiceChange = updateFormState(setServiceForms, createServiceForm);
 
   // Specjalna obsługa tankowania z auto-kalkulacją
   const handleFuelChange = (vehicleId, field, value) => {
@@ -569,6 +625,26 @@ export default function VehiclesPage({ role = 'admin', user }) {
     } catch (error) {
       console.error('Failed to create issue', error);
       showBanner('error', 'Nie udało się zgłosić problemu');
+    }
+  };
+
+  const handleServiceSubmit = async (event, vehicle) => {
+    event.preventDefault();
+    const form = serviceForms[vehicle.id] || createServiceForm();
+    if (!form.service_date) {
+      showBanner('error', 'Podaj datę ostatniego serwisu.');
+      return;
+    }
+    try {
+      await dashboardApi.updateVehicleService(vehicle.id, {
+        last_service_date: new Date(form.service_date).toISOString(),
+      });
+      setServiceForms((prev) => ({ ...prev, [vehicle.id]: createServiceForm() }));
+      showBanner('success', 'Data serwisu zapisana');
+      await loadVehicles();
+    } catch (error) {
+      console.error('Failed to update service date', error);
+      showBanner('error', 'Nie udało się zapisać daty serwisu');
     }
   };
 
@@ -1037,6 +1113,64 @@ export default function VehiclesPage({ role = 'admin', user }) {
                   </div>
                 </div>
               </div>
+              {isAdmin && (
+              <div className="row g-3 mt-1">
+                <div className="col-12">
+                  <div className="vp-form-card">
+                    <div className="vp-form-card__header vp-form-card__header--service">
+                      {Icons.wrench}
+                      <span>Serwis pojazdu</span>
+                    </div>
+                    <div className="vp-form-card__body">
+                      {(() => {
+                        const serviceStatus = getServiceStatus(vehicle.last_service_date);
+                        const serviceForm = serviceForms[vehicle.id] || createServiceForm();
+                        return (
+                          <>
+                            <div className="vp-service-status mb-3">
+                              <div className="vp-service-info">
+                                <span className="vp-service-label">Ostatni serwis:</span>
+                                <span className="vp-service-date">{formatDate(vehicle.last_service_date)}</span>
+                                {vehicle.last_service_date && (
+                                  <span className="vp-service-ago">({formatTimeAgo(vehicle.last_service_date)})</span>
+                                )}
+                              </div>
+                              <div className={`vp-service-timer vp-service-timer--${serviceStatus.status}`}>
+                                {serviceStatus.status === 'overdue' && '🔴 '}
+                                {serviceStatus.status === 'warning' && '🟠 '}
+                                {serviceStatus.status === 'upcoming' && '🟡 '}
+                                {serviceStatus.status === 'ok' && '🟢 '}
+                                {serviceStatus.label}
+                              </div>
+                            </div>
+                            <form onSubmit={(event) => handleServiceSubmit(event, vehicle)}>
+                              <div className="vp-grid vp-grid--2 vp-form-group">
+                                <div>
+                                  <label className="vp-label">Data ostatniego serwisu <span className="vp-label__required">*</span></label>
+                                  <input
+                                    type="date"
+                                    className="vp-input"
+                                    value={serviceForm.service_date}
+                                    onChange={(e) => handleServiceChange(vehicle.id, 'service_date', e.target.value)}
+                                    max={new Date().toISOString().split('T')[0]}
+                                    required
+                                  />
+                                </div>
+                                <div className="d-flex align-items-end">
+                                  <button type="submit" className="vp-btn vp-btn--primary vp-btn--full">
+                                    {Icons.check} Zapisz datę serwisu
+                                  </button>
+                                </div>
+                              </div>
+                            </form>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              )}
               </>
             )}
             <div className="vp-divider">
@@ -1150,7 +1284,7 @@ export default function VehiclesPage({ role = 'admin', user }) {
         </div>
       )}
 
-      <div className="row g-3">
+      <div className={`row g-3 ${vehicles.length > 10 ? 'vp-vehicles-scroll' : ''}`}>
         {vehicles.map((vehicle) => (
           <div key={vehicle.id} className="col-12 col-lg-6">
             {renderVehicleCard(vehicle)}
