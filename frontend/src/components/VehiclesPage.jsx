@@ -196,6 +196,7 @@ const createTripForm = () => ({
   fuel_used_l: '',
   fuel_cost: '',
   tolls_cost: '',
+  fuel_level_after: '',
   notes: '',
 });
 
@@ -543,6 +544,7 @@ export default function VehiclesPage({ role = 'admin', user }) {
     const form = tripForms[vehicle.id] || createTripForm();
     const distanceValue = parseNumber(form.distance_km);
     const fuelUsedValue = parseNumber(form.fuel_used_l);
+    const fuelLevelAfter = parseInteger(form.fuel_level_after);
     if (distanceValue === undefined) {
       showBanner('error', 'Podaj prawidłowy dystans (km).');
       return;
@@ -568,8 +570,23 @@ export default function VehiclesPage({ role = 'admin', user }) {
         tolls_cost: parseNumber(form.tolls_cost),
         notes: form.notes,
       });
+      
+      // Update vehicle: add distance to odometer and update fuel level
+      const vehicleUpdates = {};
+      const currentOdometer = vehicle.odometer || 0;
+      vehicleUpdates.odometer = currentOdometer + Math.round(distanceValue);
+      
+      if (fuelLevelAfter !== undefined && fuelLevelAfter >= 0 && fuelLevelAfter <= 100) {
+        vehicleUpdates.fuel_level = fuelLevelAfter;
+      }
+      
+      await dashboardApi.updateVehicle(vehicle.id, vehicleUpdates);
+      
+      // Refresh vehicles list
+      await loadVehicles();
+      
       setTripForms((prev) => ({ ...prev, [vehicle.id]: createTripForm() }));
-      showBanner('success', 'Przejazd zapisany');
+      showBanner('success', 'Przejazd zapisany, dane pojazdu zaktualizowane');
     } catch (error) {
       console.error('Failed to log trip', error);
       showBanner('error', 'Nie udało się zapisać przejazdu');
@@ -922,6 +939,23 @@ export default function VehiclesPage({ role = 'admin', user }) {
                             />
                             <span className="vp-input-group__suffix">PLN</span>
                           </div>
+                        </div>
+                        <div className="vp-form-group">
+                          <label className="vp-label">Poziom paliwa po trasie</label>
+                          <div className="vp-input-group">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="1"
+                              className="vp-input"
+                              placeholder={`Obecny: ${vehicle.fuel_level ?? 0}%`}
+                              value={tripForm.fuel_level_after}
+                              onChange={(e) => handleTripChange(vehicle.id, 'fuel_level_after', e.target.value)}
+                            />
+                            <span className="vp-input-group__suffix">%</span>
+                          </div>
+                          <span className="vp-hint">Zaktualizuje stan paliwa pojazdu</span>
                         </div>
                         <div className="vp-form-group">
                           <label className="vp-label">Notatki</label>
