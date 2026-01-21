@@ -96,8 +96,11 @@ async def handle_team_invite_response(notification: models.Notification, action:
         db.commit()
 
 async def create_vehicle_alert(event_payload: dict, db: Session):
-    admins = await fetch_admin_ids()
-    if not admins:
+    # Get owner_id from the event - only notify the vehicle owner, not all admins
+    owner_id = event_payload.get("owner_id")
+    if not owner_id:
+        # Fallback: if no owner_id in payload, skip (shouldn't happen)
+        print(f"[Notifications] No owner_id in vehicle alert payload, skipping")
         return
     
     event_type = event_payload.get("event_type", "vehicle_alert")
@@ -117,15 +120,15 @@ async def create_vehicle_alert(event_payload: dict, db: Session):
         title = f"Alert pojazdu {vehicle_label or vin}"
         alert_type = "vehicle_alert"
     
-    for admin_id in admins:
-        alert = models.Notification(
-            recipient_id=UUID(admin_id),
-            type=alert_type,
-            title=title,
-            body=event_payload.get("message", "Wykryto problem z pojazdem"),
-            metadata=event_payload,
-            status="unread",
-            action_required=severity in ("high", "critical"),
-        )
-        db.add(alert)
+    # Send only to vehicle owner
+    alert = models.Notification(
+        recipient_id=UUID(owner_id),
+        type=alert_type,
+        title=title,
+        body=event_payload.get("message", "Wykryto problem z pojazdem"),
+        metadata=event_payload,
+        status="unread",
+        action_required=severity in ("high", "critical"),
+    )
+    db.add(alert)
     db.commit()
