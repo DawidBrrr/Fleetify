@@ -307,6 +307,21 @@ async def add_vehicle(vehicle: VehicleCreate, authorization: str = Header(None))
     return await post_data(VEHICLE_SERVICE_URL, "/vehicles/", vehicle.dict(), authorization)
 
 
+@app.put("/dashboard/vehicles/{vehicle_id}")
+async def update_vehicle(
+    vehicle_id: int,
+    payload: Dict[str, Any] = Body(...),
+    authorization: str = Header(None),
+):
+    """Update vehicle with any fields (odometer, fuel_level, etc.)"""
+    return await put_data(
+        VEHICLE_SERVICE_URL,
+        f"/vehicles/{vehicle_id}",
+        payload,
+        authorization,
+    )
+
+
 @app.post("/dashboard/vehicles/{vehicle_id}/location")
 async def update_vehicle_location(
     vehicle_id: int,
