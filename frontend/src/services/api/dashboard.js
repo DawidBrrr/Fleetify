@@ -121,6 +121,15 @@ export const dashboardApi = {
 		return handleResponse(response, "Failed to delete vehicle");
 	},
 
+	updateVehicle: async (vehicleId, payload) => {
+		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/${vehicleId}`, {
+			method: "PUT",
+			headers: getDefaultHeaders(),
+			body: JSON.stringify(payload),
+		});
+		return handleResponse(response, "Failed to update vehicle");
+	},
+
 	updateVehicleLocation: async (vehicleId, payload) => {
 		const response = await fetch(`${API_BASE_URL}/api/dashboard/vehicles/${vehicleId}/location`, {
 			method: "POST",
