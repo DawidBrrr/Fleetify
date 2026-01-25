@@ -3,6 +3,17 @@ import httpx
 
 from config import USER_MANAGEMENT_URL
 
+
+def get_authorization_header(authorization: str = Header(None)) -> str:
+    """Get raw authorization header for forwarding to other services"""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing",
+        )
+    return authorization
+
+
 async def get_current_user(authorization: str = Header(None)):
     if not authorization:
         raise HTTPException(

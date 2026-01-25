@@ -8,12 +8,13 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import models
 from database import engine, get_db, SessionLocal
-from deps import get_current_user
-from config import RABBITMQ_HOST, RABBITMQ_USER, RABBITMQ_PASS, ANALYTICS_QUEUE
+from deps import get_current_user, get_authorization_header
+from config import RABBITMQ_HOST, RABBITMQ_USER, RABBITMQ_PASS, ANALYTICS_QUEUE, USER_MANAGEMENT_URL
 import json
 import threading
 import time
 import pika
+import httpx
 
 # Create tables if they don't exist
 models.Base.metadata.create_all(bind=engine)
@@ -510,6 +511,38 @@ def resolve_target_user(current_user: dict, explicit_user_id: Optional[str]) -> 
         return explicit_user_id
     return current_user["id"]
 
+
+async def get_team_user_ids(authorization: str, current_user: dict) -> List[str]:
+    """
+    Pobierz listę user_ids z teamu admina.
+    Dla admina: jego ID + IDs wszystkich pracowników (gdzie manager_id = admin.id)
+    Dla pracownika: tylko jego własne ID
+    """
+    if current_user.get("role") != "admin":
+        return [current_user["id"]]
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{USER_MANAGEMENT_URL}/api/users/team",
+                headers={"Authorization": authorization},
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                data = response.json()
+                user_ids = [current_user["id"]]  # Admin's own ID
+                # Add all teammates (employees managed by this admin)
+                for teammate in data.get("teammates", []):
+                    if teammate.get("id"):
+                        user_ids.append(str(teammate["id"]))
+                return user_ids
+    except Exception as e:
+        print(f"[Analytics] Failed to get team user_ids: {e}")
+    
+    # Fallback: return only admin's own ID
+    return [current_user["id"]]
+
+
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "analytics-service"}
@@ -611,33 +644,44 @@ def get_admin_stats(
     return stats
 
 @app.get("/analytics/admin/costs")
-def get_admin_costs(
+async def get_admin_costs(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
-    """Get real costs from last 30 days - fuel costs from fuel logs, tolls from trip logs"""
+    """Get real costs from last 30 days - fuel costs from fuel logs, tolls from trip logs (filtered by team)"""
     from datetime import timedelta
     
     thirty_days_ago = datetime.now() - timedelta(days=30)
     
-    # Sum fuel costs from fuel logs (last 30 days)
-    fuel_total = float(db.query(sql_func.sum(models.FuelLog.total_cost)).filter(
-        models.FuelLog.created_at >= thirty_days_ago
-    ).scalar() or 0)
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
     
-    # Sum tolls from trip logs (last 30 days)
-    tolls_total = float(db.query(sql_func.sum(models.TripLog.tolls_cost)).filter(
-        models.TripLog.created_at >= thirty_days_ago
-    ).scalar() or 0)
+    # Sum fuel costs from fuel logs (last 30 days, filtered by team)
+    fuel_query = db.query(sql_func.sum(models.FuelLog.total_cost)).filter(
+        models.FuelLog.created_at >= thirty_days_ago,
+        models.FuelLog.user_id.in_(team_user_ids)
+    )
+    fuel_total = float(fuel_query.scalar() or 0)
     
-    # Total distance for context
-    total_distance = float(db.query(sql_func.sum(models.TripLog.distance_km)).filter(
-        models.TripLog.created_at >= thirty_days_ago
-    ).scalar() or 0)
+    # Sum tolls from trip logs (last 30 days, filtered by team)
+    tolls_query = db.query(sql_func.sum(models.TripLog.tolls_cost)).filter(
+        models.TripLog.created_at >= thirty_days_ago,
+        models.TripLog.user_id.in_(team_user_ids)
+    )
+    tolls_total = float(tolls_query.scalar() or 0)
     
-    # Trip count
+    # Total distance for context (filtered by team)
+    distance_query = db.query(sql_func.sum(models.TripLog.distance_km)).filter(
+        models.TripLog.created_at >= thirty_days_ago,
+        models.TripLog.user_id.in_(team_user_ids)
+    )
+    total_distance = float(distance_query.scalar() or 0)
+    
+    # Trip count (filtered by team)
     trip_count = db.query(sql_func.count(models.TripLog.id)).filter(
-        models.TripLog.created_at >= thirty_days_ago
+        models.TripLog.created_at >= thirty_days_ago,
+        models.TripLog.user_id.in_(team_user_ids)
     ).scalar() or 0
     
     total = fuel_total + tolls_total
@@ -666,17 +710,22 @@ def get_admin_alerts(
     return alerts
 
 @app.get("/analytics/trips")
-def list_trip_logs(
+async def list_trip_logs(
     user_id: Optional[str] = None,
     limit: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
     query = db.query(models.TripLog)
     if user_id:
         target = resolve_target_user(current_user, user_id)
         query = query.filter(models.TripLog.user_id == target)
-    elif current_user.get("role") != "admin":
+    elif current_user.get("role") == "admin":
+        # Admin widzi tylko dane swojego teamu
+        team_user_ids = await get_team_user_ids(authorization, current_user)
+        query = query.filter(models.TripLog.user_id.in_(team_user_ids))
+    else:
         query = query.filter(models.TripLog.user_id == current_user["id"])
     query = query.order_by(models.TripLog.created_at.desc())
     if limit:
@@ -757,17 +806,22 @@ def delete_trip_log(
 
 
 @app.get("/analytics/fuel-logs")
-def list_fuel_logs(
+async def list_fuel_logs(
     user_id: Optional[str] = None,
     limit: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
     query = db.query(models.FuelLog)
     if user_id:
         target = resolve_target_user(current_user, user_id)
         query = query.filter(models.FuelLog.user_id == target)
-    elif current_user.get("role") != "admin":
+    elif current_user.get("role") == "admin":
+        # Admin widzi tylko dane swojego teamu
+        team_user_ids = await get_team_user_ids(authorization, current_user)
+        query = query.filter(models.FuelLog.user_id.in_(team_user_ids))
+    else:
         query = query.filter(models.FuelLog.user_id == current_user["id"])
     query = query.order_by(models.FuelLog.created_at.desc())
     if limit:
@@ -965,23 +1019,21 @@ from sqlalchemy import func as sql_func, cast, Date
 from datetime import timedelta
 
 @app.get("/analytics/charts/fuel-consumption")
-def get_fuel_consumption_chart(
+async def get_fuel_consumption_chart(
     days: int = 30,
     vehicle_id: Optional[str] = None,
     group_by: str = "day",  # day, week, month
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
-    """Pobierz dane o zużyciu paliwa w czasie dla wykresów (z cache)"""
+    """Pobierz dane o zużyciu paliwa w czasie dla wykresów (filtrowane po team)"""
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Próbuj pobrać z cache
-    cached = get_cached_chart(db, "fuel_consumption", vehicle_id, days)
-    if cached is not None:
-        return cached
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
     
-    # Fallback na obliczenie on-demand (np. jeśli cache pusty)
     start_date = datetime.now() - timedelta(days=days)
     
     query = db.query(
@@ -989,7 +1041,10 @@ def get_fuel_consumption_chart(
         sql_func.sum(models.FuelLog.liters).label("total_liters"),
         sql_func.sum(models.FuelLog.total_cost).label("total_cost"),
         sql_func.count(models.FuelLog.id).label("refuels_count")
-    ).filter(models.FuelLog.created_at >= start_date)
+    ).filter(
+        models.FuelLog.created_at >= start_date,
+        models.FuelLog.user_id.in_(team_user_ids)
+    )
     
     if vehicle_id:
         query = query.filter(models.FuelLog.vehicle_id == vehicle_id)
@@ -1010,40 +1065,45 @@ def get_fuel_consumption_chart(
 
 
 @app.get("/analytics/charts/cost-breakdown")
-def get_cost_breakdown_chart(
+async def get_cost_breakdown_chart(
     days: int = 30,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
-    """Pobierz podział kosztów dla wykresu kołowego (z cache)"""
+    """Pobierz podział kosztów dla wykresu kołowego (filtrowane po team)"""
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Próbuj pobrać z cache
-    cached = get_cached_chart(db, "cost_breakdown", None, days)
-    if cached is not None:
-        return cached
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
     
-    # Fallback na obliczenie on-demand
     start_date = datetime.now() - timedelta(days=days)
     
-    # Koszty z tabeli user_costs
+    # Koszty z tabeli user_costs (filtered by team)
     costs_query = db.query(
         models.UserCost.category,
         sql_func.sum(models.UserCost.amount).label("total")
     ).filter(
-        models.UserCost.created_at >= start_date
+        models.UserCost.created_at >= start_date,
+        models.UserCost.user_id.in_(team_user_ids)
     ).group_by(models.UserCost.category).all()
     
-    # Koszty paliwa z fuel_logs
+    # Koszty paliwa z fuel_logs (filtered by team)
     fuel_cost = db.query(
         sql_func.sum(models.FuelLog.total_cost)
-    ).filter(models.FuelLog.created_at >= start_date).scalar() or 0
+    ).filter(
+        models.FuelLog.created_at >= start_date,
+        models.FuelLog.user_id.in_(team_user_ids)
+    ).scalar() or 0
     
-    # Koszty opłat drogowych z trip_logs
+    # Koszty opłat drogowych z trip_logs (filtered by team)
     tolls_cost = db.query(
         sql_func.sum(models.TripLog.tolls_cost)
-    ).filter(models.TripLog.created_at >= start_date).scalar() or 0
+    ).filter(
+        models.TripLog.created_at >= start_date,
+        models.TripLog.user_id.in_(team_user_ids)
+    ).scalar() or 0
     
     data = []
     for row in costs_query:
@@ -1064,22 +1124,20 @@ def get_cost_breakdown_chart(
 
 
 @app.get("/analytics/charts/vehicle-mileage")
-def get_vehicle_mileage_chart(
+async def get_vehicle_mileage_chart(
     days: int = 30,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
-    """Pobierz przebieg per pojazd dla wykresu słupkowego (z cache)"""
+    """Pobierz przebieg per pojazd dla wykresu słupkowego (filtrowane po team)"""
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Próbuj pobrać z cache
-    cached = get_cached_chart(db, "vehicle_mileage", None, days)
-    if cached is not None:
-        return cached
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
     
-    # Fallback na obliczenie on-demand
     start_date = datetime.now() - timedelta(days=days)
     
     query = db.query(
@@ -1089,7 +1147,8 @@ def get_vehicle_mileage_chart(
         sql_func.count(models.TripLog.id).label("trips_count")
     ).filter(
         models.TripLog.created_at >= start_date,
-        models.TripLog.vehicle_id.isnot(None)
+        models.TripLog.vehicle_id.isnot(None),
+        models.TripLog.user_id.in_(team_user_ids)
     ).group_by(
         models.TripLog.vehicle_id,
         models.TripLog.vehicle_label
@@ -1110,22 +1169,20 @@ def get_vehicle_mileage_chart(
 
 
 @app.get("/analytics/charts/fuel-efficiency")
-def get_fuel_efficiency_chart(
+async def get_fuel_efficiency_chart(
     days: int = 30,
     vehicle_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
-    """Pobierz efektywność paliwową (l/100km) w czasie (z cache)"""
+    """Pobierz efektywność paliwową (l/100km) w czasie (filtrowane po team)"""
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Próbuj pobrać z cache
-    cached = get_cached_chart(db, "fuel_efficiency", vehicle_id, days)
-    if cached is not None:
-        return cached
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
     
-    # Fallback na obliczenie on-demand
     start_date = datetime.now() - timedelta(days=days)
     
     query = db.query(
@@ -1135,7 +1192,8 @@ def get_fuel_efficiency_chart(
     ).filter(
         models.TripLog.created_at >= start_date,
         models.TripLog.distance_km > 0,
-        models.TripLog.fuel_used_l > 0
+        models.TripLog.fuel_used_l > 0,
+        models.TripLog.user_id.in_(team_user_ids)
     )
     
     if vehicle_id:
@@ -1161,30 +1219,29 @@ def get_fuel_efficiency_chart(
 
 
 @app.get("/analytics/charts/cost-trend")
-def get_cost_trend_chart(
+async def get_cost_trend_chart(
     months: int = 6,
     vehicle_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
-    """Pobierz trend kosztów miesięcznych (z cache)"""
+    """Pobierz trend kosztów miesięcznych (filtrowane po team)"""
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Próbuj pobrać z cache (months*30 dla spójności z days)
-    cached = get_cached_chart(db, "cost_trend", vehicle_id, months * 30)
-    if cached is not None:
-        return cached
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
     
-    # Fallback na obliczenie on-demand
     start_date = datetime.now() - timedelta(days=months * 30)
     
-    # Koszty paliwa per miesiąc
+    # Koszty paliwa per miesiąc (filtered by team)
     fuel_query = db.query(
         sql_func.date_trunc('month', models.FuelLog.created_at).label("month"),
         sql_func.sum(models.FuelLog.total_cost).label("fuel_cost")
     ).filter(
-        models.FuelLog.created_at >= start_date
+        models.FuelLog.created_at >= start_date,
+        models.FuelLog.user_id.in_(team_user_ids)
     )
     if vehicle_id:
         fuel_query = fuel_query.filter(models.FuelLog.vehicle_id == vehicle_id)
@@ -1192,12 +1249,13 @@ def get_cost_trend_chart(
     
     fuel_results = {row.month: float(row.fuel_cost or 0) for row in fuel_query.all()}
     
-    # Koszty opłat drogowych per miesiąc
+    # Koszty opłat drogowych per miesiąc (filtered by team)
     tolls_query = db.query(
         sql_func.date_trunc('month', models.TripLog.created_at).label("month"),
         sql_func.sum(models.TripLog.tolls_cost).label("tolls_cost")
     ).filter(
-        models.TripLog.created_at >= start_date
+        models.TripLog.created_at >= start_date,
+        models.TripLog.user_id.in_(team_user_ids)
     )
     if vehicle_id:
         tolls_query = tolls_query.filter(models.TripLog.vehicle_id == vehicle_id)
@@ -1223,46 +1281,49 @@ def get_cost_trend_chart(
 
 
 @app.get("/analytics/charts/fleet-summary")
-def get_fleet_summary(
+async def get_fleet_summary(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
-    """Pobierz podsumowanie statystyk floty (z cache)"""
+    """Pobierz podsumowanie statystyk floty (filtrowane po team)"""
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Próbuj pobrać z cache (period_days=0 dla fleet_summary)
-    cached = get_cached_chart(db, "fleet_summary", None, 0)
-    if cached and cached.get("current_month"):
-        return cached
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
     
-    # Fallback na obliczenie on-demand
     today = datetime.now()
     month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     last_month_start = (month_start - timedelta(days=1)).replace(day=1)
     
-    # Statystyki bieżącego miesiąca
+    # Statystyki bieżącego miesiąca (filtered by team)
     current_fuel = db.query(sql_func.sum(models.FuelLog.total_cost)).filter(
-        models.FuelLog.created_at >= month_start
+        models.FuelLog.created_at >= month_start,
+        models.FuelLog.user_id.in_(team_user_ids)
     ).scalar() or 0
     
     current_distance = db.query(sql_func.sum(models.TripLog.distance_km)).filter(
-        models.TripLog.created_at >= month_start
+        models.TripLog.created_at >= month_start,
+        models.TripLog.user_id.in_(team_user_ids)
     ).scalar() or 0
     
     current_trips = db.query(sql_func.count(models.TripLog.id)).filter(
-        models.TripLog.created_at >= month_start
+        models.TripLog.created_at >= month_start,
+        models.TripLog.user_id.in_(team_user_ids)
     ).scalar() or 0
     
-    # Statystyki poprzedniego miesiąca (do porównania)
+    # Statystyki poprzedniego miesiąca (do porównania, filtered by team)
     last_fuel = db.query(sql_func.sum(models.FuelLog.total_cost)).filter(
         models.FuelLog.created_at >= last_month_start,
-        models.FuelLog.created_at < month_start
+        models.FuelLog.created_at < month_start,
+        models.FuelLog.user_id.in_(team_user_ids)
     ).scalar() or 0
     
     last_distance = db.query(sql_func.sum(models.TripLog.distance_km)).filter(
         models.TripLog.created_at >= last_month_start,
-        models.TripLog.created_at < month_start
+        models.TripLog.created_at < month_start,
+        models.TripLog.user_id.in_(team_user_ids)
     ).scalar() or 0
     
     # Oblicz zmiany procentowe
@@ -1287,24 +1348,34 @@ def get_fleet_summary(
 
 
 @app.get("/analytics/vehicles-list")
-def get_vehicles_list(
+async def get_vehicles_list(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
-    """Pobierz listę unikalnych pojazdów do filtrów"""
+    """Pobierz listę unikalnych pojazdów do filtrów (filtrowane po team)"""
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Pobierz unikalne pojazdy z trip_logs i fuel_logs
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
+    
+    # Pobierz unikalne pojazdy z trip_logs i fuel_logs (filtered by team)
     trip_vehicles = db.query(
         models.TripLog.vehicle_id,
         models.TripLog.vehicle_label
-    ).filter(models.TripLog.vehicle_id.isnot(None)).distinct().all()
+    ).filter(
+        models.TripLog.vehicle_id.isnot(None),
+        models.TripLog.user_id.in_(team_user_ids)
+    ).distinct().all()
     
     fuel_vehicles = db.query(
         models.FuelLog.vehicle_id,
         models.FuelLog.vehicle_label
-    ).filter(models.FuelLog.vehicle_id.isnot(None)).distinct().all()
+    ).filter(
+        models.FuelLog.vehicle_id.isnot(None),
+        models.FuelLog.user_id.in_(team_user_ids)
+    ).distinct().all()
     
     # Połącz i deduplikuj
     vehicles_map = {}
@@ -1323,28 +1394,33 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 @app.get("/analytics/charts/cost-prediction")
-def get_cost_prediction(
+async def get_cost_prediction(
     history_days: int = 90,
     predict_days: int = 30,
     vehicle_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
     """
-    Predykcja kosztów na podstawie regresji liniowej.
+    Predykcja kosztów na podstawie regresji liniowej (filtrowane po team).
     Analizuje dane historyczne i przewiduje koszty na następne dni.
     """
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
+    
     start_date = datetime.now() - timedelta(days=history_days)
     
-    # Pobierz dzienne koszty paliwa
+    # Pobierz dzienne koszty paliwa (filtered by team)
     fuel_query = db.query(
         cast(models.FuelLog.created_at, Date).label("date"),
         sql_func.sum(models.FuelLog.total_cost).label("cost")
     ).filter(
-        models.FuelLog.created_at >= start_date
+        models.FuelLog.created_at >= start_date,
+        models.FuelLog.user_id.in_(team_user_ids)
     )
     if vehicle_id:
         fuel_query = fuel_query.filter(models.FuelLog.vehicle_id == vehicle_id)
@@ -1352,12 +1428,13 @@ def get_cost_prediction(
     
     fuel_data = {row.date: float(row.cost or 0) for row in fuel_query.all()}
     
-    # Pobierz dzienne koszty opłat drogowych
+    # Pobierz dzienne koszty opłat drogowych (filtered by team)
     tolls_query = db.query(
         cast(models.TripLog.created_at, Date).label("date"),
         sql_func.sum(models.TripLog.tolls_cost).label("cost")
     ).filter(
-        models.TripLog.created_at >= start_date
+        models.TripLog.created_at >= start_date,
+        models.TripLog.user_id.in_(team_user_ids)
     )
     if vehicle_id:
         tolls_query = tolls_query.filter(models.TripLog.vehicle_id == vehicle_id)
@@ -1459,36 +1536,42 @@ def get_cost_prediction(
 
 
 @app.get("/analytics/charts/monthly-prediction")
-def get_monthly_prediction(
+async def get_monthly_prediction(
     history_months: int = 6,
     predict_months: int = 3,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    authorization: str = Depends(get_authorization_header)
 ):
     """
-    Predykcja miesięcznych kosztów na podstawie regresji liniowej.
+    Predykcja miesięcznych kosztów na podstawie regresji liniowej (filtrowane po team).
     """
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
+    # Get team user IDs for filtering
+    team_user_ids = await get_team_user_ids(authorization, current_user)
+    
     start_date = datetime.now() - timedelta(days=history_months * 30)
     
-    # Pobierz miesięczne koszty paliwa
+    # Pobierz miesięczne koszty paliwa (filtered by team)
     fuel_query = db.query(
         sql_func.date_trunc('month', models.FuelLog.created_at).label("month"),
         sql_func.sum(models.FuelLog.total_cost).label("cost")
     ).filter(
-        models.FuelLog.created_at >= start_date
+        models.FuelLog.created_at >= start_date,
+        models.FuelLog.user_id.in_(team_user_ids)
     ).group_by(sql_func.date_trunc('month', models.FuelLog.created_at))
     
     fuel_data = {row.month: float(row.cost or 0) for row in fuel_query.all()}
     
-    # Pobierz miesięczne koszty opłat
+    # Pobierz miesięczne koszty opłat (filtered by team)
     tolls_query = db.query(
         sql_func.date_trunc('month', models.TripLog.created_at).label("month"),
         sql_func.sum(models.TripLog.tolls_cost).label("cost")
     ).filter(
-        models.TripLog.created_at >= start_date
+        models.TripLog.created_at >= start_date,
+        models.TripLog.user_id.in_(team_user_ids)
     ).group_by(sql_func.date_trunc('month', models.TripLog.created_at))
     
     tolls_data = {row.month: float(row.cost or 0) for row in tolls_query.all()}
