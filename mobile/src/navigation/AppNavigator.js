@@ -9,6 +9,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import ReportIssueScreen from '../screens/ReportIssueScreen';
 import TripLogScreen from '../screens/TripLogScreen';
 import AddTripScreen from '../screens/AddTripScreen'; // Nowy import
+import AddFuelScreen from '../screens/AddFuelScreen';
 import { CONFIG } from '../constants/Config';
 
 const Stack = createStackNavigator();
@@ -41,6 +42,7 @@ export default function AppNavigator() {
             <Stack.Screen name="ReportIssue" component={ReportIssueScreen} options={{ title: 'Zgłoś usterkę' }} />
             <Stack.Screen name="TripLog" component={TripLogScreen} options={{ title: 'Historia tras' }} />
             <Stack.Screen name="AddTrip" component={AddTripScreen} options={{ title: 'Nowa trasa' }} />
+            <Stack.Screen name="AddFuel" component={AddFuelScreen} options={{title: "Nowe tankowanie"}} />
           </>
         )}
       </Stack.Navigator>

@@ -1,32 +1,26 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Fleetify Driver",
+    "slug": "fleetify-mobile",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
+      "package": "com.fleetify.driver",
+      "usesCleartextTraffic": true
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "926f3c28-c7bf-44cb-a30d-4645ed4d89d0"
+      }
+    }
   }
 }

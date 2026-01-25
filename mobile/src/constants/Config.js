@@ -1,7 +1,9 @@
 export const CONFIG = {
-  // Wpisz IP swojego komputera, np. 'http://192.168.1.15:8080/api'
-  BASE_URL: 'http://192.168.1.102:8080/api', 
-  API_KEY: 'kluczyk', // Musi być taki sam jak w Twoim Nginx Gateway
+  
+  BASE_URL: process.env.EXPO_PUBLIC_API_URL,
+  API_KEY: process.env.EXPO_PUBLIC_API_KEY,
+  
+  
   COLORS: {
     navy: '#0F1C2E',
     cyan: '#05B4D9',

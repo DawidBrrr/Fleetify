@@ -1,28 +1,29 @@
 import apiClient from './client';
 
 export const driverApi = {
+  // Pobieranie danych o aucie i zadaniach
   getDashboard: () => apiClient.get('/dashboard/employee'),
   
-  updateOdometer: (mileage, battery) => 
+  // Aktualizacja licznika i baterii
+  updateVehicleStatus: (mileage, battery) => 
     apiClient.post('/dashboard/employee/vehicle/update', { 
-      mileage: mileage.toString(), 
-      battery: parseInt(battery) 
+        mileage: mileage.toString(), 
+        battery: parseInt(battery) 
     }),
 
-  // FIX: Usunięto /api/ z początku ścieżki, bo jest w baseURL
+  // ZWROT: Zwalnianie auta w systemie
+  returnVehicle: () => apiClient.post('/dashboard/employee/vehicle/return'),
+
+  // USTERKI: Zgłoszenie do vehicle-service
   reportIssue: (vehicleId, issueData) => 
     apiClient.post(`/vehicles/${vehicleId}/issues`, issueData),
 
-  getMyTrips: () => apiClient.get('/dashboard/trips'),
-  
-  // NOWOŚĆ: Dodawanie trasy
+  // TRASY: Zapis do analytics-service
   createTrip: (tripData) => apiClient.post('/dashboard/trips', tripData),
 
-  getMyStats: () => apiClient.get('/dashboard/charts/fleet-summary'),
-  
-  // RAPORTY PDF
-  requestReport: (reportType = 'trips') => 
-    apiClient.post(`/reports/request/${reportType}`, { include_charts: true, include_summary: true }),
-  checkReportStatus: (jobId) => apiClient.get(`/reports/status/${jobId}`),
-  getDownloadUrl: (jobId) => `${apiClient.defaults.baseURL}/reports/download/${jobId}`,
+  // TANKOWANIA: Zapis do analytics-service
+  createFuelLog: (fuelData) => apiClient.post('/dashboard/fuel-logs', fuelData),
+
+  // HISTORIA: Dla widoku list
+  getMyTrips: () => apiClient.get('/dashboard/trips'),
 };
