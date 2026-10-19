@@ -1,4 +1,5 @@
 import apiClient from './client';
+import { CONFIG } from '../constants/Config';
 
 export const driverApi = {
   // Pobieranie danych o aucie i zadaniach
@@ -26,4 +27,10 @@ export const driverApi = {
 
   // HISTORIA: Dla widoku list
   getMyTrips: () => apiClient.get('/dashboard/trips'),
+
+  // RAPORTY: Generowanie i pobieranie raportów
+  requestReport: (reportType, request = {}) =>
+    apiClient.post(`/reports/request/${reportType}`, request),
+  checkReportStatus: (jobId) => apiClient.get(`/reports/status/${jobId}`),
+  getDownloadUrl: (jobId) => `${CONFIG.BASE_URL}/reports/download/${jobId}`,
 };

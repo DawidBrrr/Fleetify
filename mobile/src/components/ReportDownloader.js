@@ -1,51 +1,98 @@
-import React, { useState } from 'react';
-import { View, Alert, Linking } from 'react-native';
-import { Button, Text, ProgressBar, ActivityIndicator } from 'react-native-paper';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Alert, Linking, StyleSheet } from 'react-native';
+import { Button, Text, ProgressBar } from 'react-native-paper';
 import { driverApi } from '../api/services';
 import { CONFIG } from '../constants/Config';
 
 export default function ReportDownloader() {
-  const [status, setStatus] = useState('idle'); // idle, processing, ready
+  const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
+  const pollTimerRef = useRef(null);
+  const mountedRef = useRef(true);
+  const generatingRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const startGeneration = async () => {
+    if (generatingRef.current) return;
+
+    generatingRef.current = true;
+    setStatus('processing');
+    setProgress(0.1);
+
     try {
-      setStatus('processing');
-      setProgress(0.1);
-      
-      // Krok 1: Żądanie raportu
       const res = await driverApi.requestReport('trips');
-      const jobId = res.data.job_id;
+      const jobId = res.data?.job_id;
+      if (!jobId) {
+        throw new Error('Brak identyfikatora zadania raportu.');
+      }
 
-      // Krok 2: Polling (sprawdzanie co 2 sekundy)
-      const interval = setInterval(async () => {
-        const statusRes = await driverApi.checkReportStatus(jobId);
-        const currentStatus = statusRes.data.status;
-        const currentProgress = statusRes.data.progress / 100;
+      const poll = async () => {
+        if (!mountedRef.current || !generatingRef.current) return;
 
-        setProgress(currentProgress);
+        try {
+          const statusRes = await driverApi.checkReportStatus(jobId);
+          if (!mountedRef.current) return;
 
-        if (currentStatus === 'COMPLETED') {
-          clearInterval(interval);
-          setStatus('ready');
-          const url = driverApi.getDownloadUrl(jobId);
-          Linking.openURL(url); // Otwiera PDF w przeglądarce telefonu
-          setStatus('idle');
-        } else if (currentStatus === 'FAILED') {
-          clearInterval(interval);
-          setStatus('idle');
-          Alert.alert("Błąd", "Generowanie raportu nie powiodło się.");
+          const currentStatus = String(statusRes.data?.status || '').toUpperCase();
+          const rawProgress = Number(statusRes.data?.progress);
+          if (Number.isFinite(rawProgress)) {
+            setProgress(Math.min(1, Math.max(0, rawProgress / 100)));
+          }
+
+          if (currentStatus === 'COMPLETED') {
+            generatingRef.current = false;
+            pollTimerRef.current = null;
+            setStatus('idle');
+
+            const url = driverApi.getDownloadUrl(jobId);
+            Linking.openURL(url).catch(() => {
+              if (mountedRef.current) {
+                Alert.alert('Błąd', 'Nie udało się otworzyć raportu.');
+              }
+            });
+            return;
+          }
+
+          if (currentStatus === 'FAILED') {
+            generatingRef.current = false;
+            pollTimerRef.current = null;
+            setStatus('idle');
+            Alert.alert('Błąd', 'Generowanie raportu nie powiodło się.');
+            return;
+          }
+
+          pollTimerRef.current = setTimeout(poll, 2000);
+        } catch (e) {
+          generatingRef.current = false;
+          pollTimerRef.current = null;
+          if (mountedRef.current) {
+            setStatus('idle');
+            Alert.alert('Błąd', 'Nie udało się sprawdzić statusu raportu.');
+          }
         }
-      }, 2000);
+      };
 
+      await poll();
     } catch (e) {
-      setStatus('idle');
-      Alert.alert("Błąd", "Serwis raportowy jest nieosiągalny.");
+      generatingRef.current = false;
+      if (mountedRef.current) {
+        setStatus('idle');
+        Alert.alert('Błąd', 'Serwis raportowy jest nieosiągalny.');
+      }
     }
   };
 
   return (
-    <View style={{ marginTop: 10 }}>
+    <View style={styles.container}>
       {status === 'idle' ? (
         <Button 
           icon="file-pdf-box" 
@@ -56,8 +103,8 @@ export default function ReportDownloader() {
           Pobierz raport moich tras (PDF)
         </Button>
       ) : (
-        <View style={{ padding: 10, backgroundColor: '#fff', borderRadius: 10 }}>
-          <Text style={{ textAlign: 'center', marginBottom: 5 }}>
+        <View style={styles.progressCard}>
+          <Text style={styles.progressText}>
             Generowanie raportu... {Math.round(progress * 100)}%
           </Text>
           <ProgressBar progress={progress} color={CONFIG.COLORS.cyan} />
@@ -66,3 +113,18 @@ export default function ReportDownloader() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 10,
+  },
+  progressCard: {
+    padding: 10,
+    backgroundColor: CONFIG.COLORS.white,
+    borderRadius: 10,
+  },
+  progressText: {
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+});

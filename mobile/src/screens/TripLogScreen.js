@@ -21,7 +21,7 @@ export default function TripLogScreen() {
 
   useEffect(() => { loadTrips(); }, []);
 
-  if (loading) return <ActivityIndicator style={{flex:1}} color={CONFIG.COLORS.cyan}/>;
+  if (loading) return <ActivityIndicator style={styles.loader} color={CONFIG.COLORS.cyan}/>;
 
   return (
     <View style={styles.container}>
@@ -46,6 +46,7 @@ export default function TripLogScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: CONFIG.COLORS.ice, padding: 10 },
+  loader: { flex: 1 },
   card: { marginBottom: 10, backgroundColor: '#fff' },
   date: { fontSize: 12, color: 'gray', alignSelf: 'center', marginRight: 10 },
   empty: { textAlign: 'center', marginTop: 50, color: 'gray' }

@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
@@ -19,7 +19,7 @@ export default function AppNavigator() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: CONFIG.COLORS.ice }}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={CONFIG.COLORS.cyan} />
       </View>
     );
@@ -29,16 +29,16 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator 
         screenOptions={{ 
-          headerStyle: { backgroundColor: CONFIG.COLORS.navy },
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontWeight: 'bold' },
+          headerStyle: styles.header,
+          headerTintColor: CONFIG.COLORS.white,
+          headerTitleStyle: styles.headerTitle,
         }}
       >
         {userToken == null ? (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         ) : (
           <>
-            <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Fleetify Driver' }} />
+            <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="ReportIssue" component={ReportIssueScreen} options={{ title: 'Zgłoś usterkę' }} />
             <Stack.Screen name="TripLog" component={TripLogScreen} options={{ title: 'Historia tras' }} />
             <Stack.Screen name="AddTrip" component={AddTripScreen} options={{ title: 'Nowa trasa' }} />
@@ -49,3 +49,18 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: CONFIG.COLORS.ice,
+  },
+  header: {
+    backgroundColor: CONFIG.COLORS.navy,
+  },
+  headerTitle: {
+    fontWeight: 'bold',
+  },
+});
