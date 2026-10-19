@@ -15,7 +15,12 @@ export default function ReportIssueScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!title || !description) {
+    if (loading) return;
+
+    const normalizedTitle = title.trim();
+    const normalizedDescription = description.trim();
+
+    if (!normalizedTitle || !normalizedDescription) {
       Alert.alert("Błąd", "Wypełnij wszystkie pola.");
       return;
     }
@@ -23,12 +28,13 @@ export default function ReportIssueScreen({ route, navigation }) {
     try {
       setLoading(true);
       await driverApi.reportIssue(vehicleId, {
-        title,
-        description,
+        title: normalizedTitle,
+        description: normalizedDescription,
         severity, // Wysyła low, medium, high lub critical
         reporter_id: userData.id
       });
       
+      setLoading(false);
       Alert.alert("Sukces", "Zgłoszenie zostało wysłane.");
       navigation.goBack();
     } catch (e) {
@@ -57,7 +63,7 @@ export default function ReportIssueScreen({ route, navigation }) {
         style={styles.segmented}
       />
 
-      <Button mode="contained" onPress={handleSubmit} loading={loading} buttonColor={CONFIG.COLORS.danger} style={styles.button}>
+      <Button mode="contained" onPress={handleSubmit} loading={loading} disabled={loading} buttonColor={CONFIG.COLORS.danger} style={styles.button}>
         Zgłoś awarię
       </Button>
     </ScrollView>

@@ -5,6 +5,15 @@ import { driverApi } from '../api/services';
 import { AuthContext } from '../context/AuthContext';
 import { CONFIG } from '../constants/Config';
 
+const formatMileage = (mileage) => {
+  if (mileage === null || mileage === undefined || mileage === '') {
+    return '0 km';
+  }
+
+  const value = String(mileage).trim();
+  return /km$/i.test(value) ? value : `${value} km`;
+};
+
 export default function DashboardScreen({ navigation }) {
   const { logout, userData } = useContext(AuthContext);
   const [data, setData] = useState(null);
@@ -14,7 +23,6 @@ export default function DashboardScreen({ navigation }) {
   // Pobieranie danych z Dashboard Service (BFF)
   const loadData = async () => {
     try {
-      setLoading(true);
       const res = await driverApi.getDashboard();
       setData(res.data);
     } catch (e) {
@@ -30,7 +38,7 @@ export default function DashboardScreen({ navigation }) {
 
   // Odświeżanie danych przy każdym wejściu na ekran
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', loadData);
+    const unsubscribe = navigation.addListener('focus', () => loadData());
     return unsubscribe;
   }, [navigation]);
 
@@ -63,11 +71,11 @@ export default function DashboardScreen({ navigation }) {
   };
 
   // 1. Ekran ładowania
-  if (loading && !refreshing) {
+  if (loading && !data && !refreshing) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator animating={true} color={CONFIG.COLORS.cyan} size="large" />
-        <Text style={{ marginTop: 10, color: CONFIG.COLORS.gray }}>Ładowanie danych...</Text>
+        <Text style={styles.loadingText}>Ładowanie danych...</Text>
       </View>
     );
   }
@@ -80,7 +88,7 @@ export default function DashboardScreen({ navigation }) {
           <Text variant="headlineSmall" style={styles.whiteText}>Witaj, {userData?.full_name?.split(' ')[0]}</Text>
           <IconButton icon="logout" iconColor="white" onPress={logout} />
         </View>
-        <View style={styles.centered}>
+        <View style={styles.emptyState}>
           <Avatar.Icon size={80} icon="car-off" backgroundColor={CONFIG.COLORS.gray} />
           <Text style={styles.noVehicleText}>Brak przydzielonego auta</Text>
           <Text style={styles.subText}>Czekaj na decyzję administratora w panelu Web.</Text>
@@ -104,6 +112,7 @@ export default function DashboardScreen({ navigation }) {
   return (
     <ScrollView 
       style={styles.container}
+      contentContainerStyle={styles.dashboardContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={CONFIG.COLORS.cyan} />}
     >
       {/* NAGŁÓWEK */}
@@ -130,14 +139,14 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.statsRow}>
             <View>
               <Text variant="labelMedium" style={styles.label}>Przebieg całkowity</Text>
-              <Text variant="headlineMedium" style={styles.mileageText}>{vehicle.mileage} km</Text>
+              <Text variant="headlineMedium" style={styles.mileageText}>{formatMileage(vehicle.mileage)}</Text>
             </View>
           </View>
 
           <View style={styles.fuelSection}>
             <View style={styles.fuelLabels}>
               <Text variant="bodyMedium">Energia / Paliwo</Text>
-              <Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>{Math.round(fuelLevel * 100)}%</Text>
+              <Text variant="bodyMedium" style={styles.fuelPercentage}>{Math.round(fuelLevel * 100)}%</Text>
             </View>
             <ProgressBar 
               progress={fuelLevel} 
@@ -166,7 +175,7 @@ export default function DashboardScreen({ navigation }) {
           mode="contained" 
           onPress={() => navigation.navigate('AddFuel', { vehicleId: vehicle.id, vehicleLabel: vehicle.model })}
           style={styles.mainBtn}
-          buttonColor="#FF9800"
+          buttonColor={CONFIG.COLORS.orange}
         >
           Zgłoś Tankowanie
         </Button>
@@ -216,11 +225,17 @@ export default function DashboardScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: CONFIG.COLORS.navy },
+  dashboardContent: { flexGrow: 1, justifyContent: 'space-between', paddingBottom: 8 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: CONFIG.COLORS.ice },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: CONFIG.COLORS.navy },
+  loadingText: { marginTop: 10, color: CONFIG.COLORS.gray },
   header: { 
     paddingTop: 60, 
     paddingHorizontal: 25, 
     paddingBottom: 25, 
+    backgroundColor: '#0A1628',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(247, 251, 255, 0.18)',
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center' 
@@ -233,14 +248,15 @@ const styles = StyleSheet.create({
   mileageText: { color: CONFIG.COLORS.navy, fontWeight: 'bold' },
   fuelSection: { marginTop: 20 },
   fuelLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  fuelPercentage: { fontWeight: 'bold' },
   progressBar: { height: 12, borderRadius: 6 },
   actionGrid: { padding: 20, gap: 12 },
   mainBtn: { paddingVertical: 8, borderRadius: 15, elevation: 4 },
   row: { flexDirection: 'row', gap: 10 },
   halfBtn: { flex: 1, borderRadius: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDD' },
   footerActions: { marginTop: 10, alignItems: 'center' },
-  noVehicleText: { color: '#FFFFFF', fontSize: 20, fontWeight: 'bold', marginTop: 20 },
-  subText: { color: '#FFFFFF', opacity: 0.6, textAlign: 'center', marginTop: 5 },
+  noVehicleText: { color: CONFIG.COLORS.white, fontSize: 20, fontWeight: 'bold', marginTop: 20 },
+  subText: { color: CONFIG.COLORS.ice, opacity: 0.7, textAlign: 'center', marginTop: 5 },
   refreshButton: { marginTop: 25, width: '80%', borderRadius: 10 },
   footerVersion: { textAlign: 'center', color: 'gray', fontSize: 10, marginVertical: 20, opacity: 0.5 }
 });

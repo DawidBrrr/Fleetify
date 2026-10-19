@@ -23,6 +23,7 @@ Fleetify follows a **Microservices Architecture** containerized with Docker.
 | Service | Tech Stack | Description |
 | :--- | :--- | :--- |
 | **Frontend** | React, Vite, Tailwind, Bootstrap | The SPA user interface. Uses Recharts for analytics and Leaflet for mapping. |
+| **Mobile** | Expo SDK 57, React Native | Mobile driver application for trips, fueling, issue reports, and vehicle assignments. |
 | **Dashboard Service** | Python (FastAPI) | BFF (Backend for Frontend) aggregator that orchestrates data between services. |
 | **Vehicle Service** | Python (FastAPI), PostgreSQL | Manages vehicle inventory, status, and technical specifications. |
 | **Analytics Service** | Python (FastAPI), PostgreSQL | Handles data crunching, cost predictions, and chart generation. |
@@ -52,6 +53,30 @@ Fleetify follows a **Microservices Architecture** containerized with Docker.
     Ensure `.env` files are present in the service directories where required.
     *   *Note: The frontend expects a `.env` file in `frontend/`.*
 
+    **Mobile app:** create a local, untracked `mobile/.env` file with:
+    ```env
+    EXPO_PUBLIC_API_URL=http://<your-computer-ip>:8080/api
+    ```
+    Do not commit this file. Production builds must use an HTTPS API URL.
+
+    **RabbitMQ:** Docker Compose uses safe local defaults, so no extra file is
+    required for local development. To override them, copy the values from
+    `rabbitmq.env.example` into the root `.env` file or export them in your
+    shell. Use unique credentials in shared or production environments.
+
+    For EAS builds, configure `EXPO_PUBLIC_API_URL` in each EAS environment
+    (`development`, `preview`, and `production`) instead of adding it to
+    `mobile/eas.json`:
+    ```bash
+    cd mobile
+    eas env:create --environment preview --name EXPO_PUBLIC_API_URL --value https://<your-api-host>/api --visibility plaintext
+    ```
+    Repeat the command for the other environments with their corresponding
+    API URLs.
+
+    Do not commit `.env` files, access tokens, passwords, or API keys. The
+    local `mobile/.env` file is ignored by Git.
+
 3.  **Build and Run with Docker Compose**
     This command will build all microservices, set up the databases, and start the Nginx gateway.
     ```bash
@@ -61,6 +86,54 @@ Fleetify follows a **Microservices Architecture** containerized with Docker.
 4.  **Access the Application**
     *   **Frontend:** [http://localhost:5173](http://localhost:5173) 
     *   **API Gateway:** [http://localhost:8080](http://localhost:8080)
+
+### Mobile development
+
+Install dependencies and start Expo from the `mobile` directory:
+
+```bash
+cd mobile
+npm install
+npx expo start --clear --lan
+```
+
+For a physical phone, connect the phone and computer to the same network and
+set the computer's local IP address in `mobile/.env`:
+
+```env
+EXPO_PUBLIC_API_URL=http://<your-computer-ip>:8080/api
+```
+
+Do not use `localhost` on a physical phone. For the Android emulator, use
+`http://10.0.2.2:8080/api`. Production builds must use an HTTPS API URL.
+
+### EAS builds
+
+After configuring `EXPO_PUBLIC_API_URL` in the EAS environment, build with the
+profile that matches the target:
+
+```bash
+cd mobile
+eas build --profile development --platform android
+eas build --profile preview --platform android
+eas build --profile production --platform android
+```
+
+The `preview` profile produces an installable APK. The `production` profile is
+intended for release builds.
+
+### Validation
+
+Run these checks after changing mobile dependencies or native configuration:
+
+```bash
+cd mobile
+npx expo-doctor
+npx expo export --platform android
+```
+
+Generated folders such as `node_modules`, `.expo`, and temporary export output
+must not be committed.
 
 ---
 
@@ -78,13 +151,14 @@ Fleetify follows a **Microservices Architecture** containerized with Docker.
 │   │   ├── components/      # UI Components (Dashboard, VehiclesPage, etc.)
 │   │   ├── services/        # API integration logic
 │   │   └── ...
+├── mobile/                  # Expo React Native driver application
 ├── infrastructure/          # Infrastructure configuration
 ├── services/                # Backend Microservices
 │   ├── analytics-service/   # Data processing & predictions
 │   ├── dashboard-service/   # API Aggregator
 │   ├── notifications-service/ # RabbitMQ consumer
 │   ├── report-service/      # PDF report generation (Java/Spring Boot)
-│   ├── user-managment/      # Django Auth system
+│   ├── user-management/     # Django Auth system
 │   └── vehicle-service/     # Vehicle CRUD
 └── docker-compose.yaml      # Orchestration
 ```

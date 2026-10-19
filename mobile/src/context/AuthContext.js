@@ -18,7 +18,12 @@ export const AuthProvider = ({ children }) => {
       setUserToken(token);
       setUserData(user);
     } catch (e) {
-      throw new Error(e.response?.data?.detail || 'Błąd logowania');
+      const error = new Error(
+        e.response?.data?.detail || 'Nie udało się zalogować.'
+      );
+      error.status = e.response?.status;
+      error.isNetworkError = !e.response;
+      throw error;
     }
   };
 
@@ -29,16 +34,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isLoggedIn = async () => {
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
       const token = await SecureStore.getItemAsync('userToken');
-      if (token) {
-        setUserToken(token);
-        // Opcjonalnie: pobierz dane o użytkowniku z /users/me
+      if (!token) {
+        setUserToken(null);
+        setUserData(null);
+        return;
       }
-      setIsLoading(false);
+
+      const response = await apiClient.get('/users/me');
+      setUserToken(token);
+      setUserData(response.data);
     } catch (e) {
       console.log('isLoggedIn error:', e);
+      await SecureStore.deleteItemAsync('userToken');
+      setUserToken(null);
+      setUserData(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 

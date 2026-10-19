@@ -18,8 +18,25 @@ export default function AddTripScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
+    if (loading) return;
+
     if (!form.route_label || !form.distance_km) {
       Alert.alert("Błąd", "Podaj trasę i dystans.");
+      return;
+    }
+
+    const distance = Number(String(form.distance_km).replace(',', '.'));
+    const fuelCost = form.fuel_cost
+      ? Number(String(form.fuel_cost).replace(',', '.'))
+      : 0;
+
+    if (!Number.isFinite(distance) || distance <= 0) {
+      Alert.alert("Błąd", "Dystans musi być dodatnią liczbą.");
+      return;
+    }
+
+    if (!Number.isFinite(fuelCost) || fuelCost < 0) {
+      Alert.alert("Błąd", "Koszt paliwa musi być poprawną liczbą.");
       return;
     }
 
@@ -30,10 +47,11 @@ export default function AddTripScreen({ route, navigation }) {
         vehicle_id: vehicleId.toString(),
         vehicle_label: vehicleLabel,
         route_label: form.route_label,
-        distance_km: parseFloat(form.distance_km),
-        fuel_cost: parseFloat(form.fuel_cost || 0),
+        distance_km: distance,
+        fuel_cost: fuelCost,
         notes: form.notes
       });
+      setLoading(false);
       Alert.alert("Sukces", "Trasa została zapisana.");
       navigation.goBack();
     } catch (e) {
@@ -51,7 +69,7 @@ export default function AddTripScreen({ route, navigation }) {
       <TextInput label="Koszt paliwa (zł)" value={form.fuel_cost} onChangeText={v => setForm({...form, fuel_cost: v})} keyboardType="numeric" mode="outlined" style={styles.input} />
       <TextInput label="Notatki" value={form.notes} onChangeText={v => setForm({...form, notes: v})} mode="outlined" multiline numberOfLines={3} style={styles.input} />
 
-      <Button mode="contained" onPress={handleSave} loading={loading} buttonColor={CONFIG.COLORS.cyan} style={styles.button}>
+      <Button mode="contained" onPress={handleSave} loading={loading} disabled={loading} buttonColor={CONFIG.COLORS.cyan} style={styles.button}>
         Zakończ i zapisz trasę
       </Button>
     </ScrollView>

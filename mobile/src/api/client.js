@@ -6,7 +6,6 @@ const apiClient = axios.create({
   baseURL: CONFIG.BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'X-API-Key': CONFIG.API_KEY,
   },
 });
 
