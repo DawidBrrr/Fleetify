@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
   user-management-db:
@@ -58,8 +57,14 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-    env_file:
-      - rabbitmq.env
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER in .env}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS in .env}"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   vehicle-db:
     build:
@@ -84,15 +89,17 @@ services:
     env_file:
       - services/vehicle-service/.env
     environment:
-      DATABASE_URL: postgresql://user:password@vehicle-db:5432/vehicle_db
+      DATABASE_URL: postgresql+psycopg2://user:password@vehicle-db:5432/vehicle_db
       RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: "${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER in .env}"
+      RABBITMQ_PASS: "${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS in .env}"
     ports:
       - "8001:8000"
     depends_on:
       vehicle-db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./services/vehicle-service:/app
 
@@ -103,13 +110,15 @@ services:
       - services/dashboard-service/.env
     environment:
       RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: "${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER in .env}"
+      RABBITMQ_PASS: "${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS in .env}"
       ANALYTICS_SERVICE_URL: http://analytics-service:8000
       NOTIFICATIONS_SERVICE_URL: http://notifications-service:8000
     ports:
       - "8002:8000"
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       analytics-service:
         condition: service_started
       notifications-service:
@@ -138,11 +147,16 @@ services:
     build:
       context: ./services/analytics-service
     environment:
-      DATABASE_URL: postgresql://user:password@analytics-db:5432/analytics_db
+      DATABASE_URL: postgresql+psycopg2://user:password@analytics-db:5432/analytics_db
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: "${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER in .env}"
+      RABBITMQ_PASS: "${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS in .env}"
     ports:
       - "8003:8000"
     depends_on:
       analytics-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - ./services/analytics-service:/app
@@ -169,13 +183,17 @@ services:
       context: ./services/notifications-service
     env_file:
       - services/notifications-service/.env
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: "${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER in .env}"
+      RABBITMQ_PASS: "${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS in .env}"
     ports:
       - "8004:8000"
     depends_on:
       notifications-db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./services/notifications-service:/app
 
@@ -189,12 +207,17 @@ services:
       VEHICLE_SERVICE_URL: http://vehicle-service:8000
       USER_MANAGEMENT_URL: http://user-management:8000
       RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: "${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER in .env}"
+      RABBITMQ_PASS: "${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS in .env}"
     ports:
       - "8005:8000"
     depends_on:
-      - analytics-service
-      - vehicle-service
-      - rabbitmq
+      analytics-service:
+        condition: service_started
+      vehicle-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   frontend_node_modules:
