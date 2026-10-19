@@ -26,9 +26,16 @@ SECRET_KEY = 'django-insecure-hf5z5pt1&go3i*2lb)+rt%+edo+=!mer1mpko8_9*(9y=(777+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-#TODO
-#IMPORTANT : Update this in production
-ALLOWED_HOSTS = ['*']
+# Keep the default host list restricted. Add the gateway host/IP through the
+# environment for local devices or deployments that use a different hostname.
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get(
+        'ALLOWED_HOSTS',
+        'localhost,127.0.0.1,user-management',
+    ).split(',')
+    if host.strip()
+]
 
 # Add Gateway IP from environment variable if set
 gateway_ip = os.environ.get('GATEWAY_IP_ADDRESS')

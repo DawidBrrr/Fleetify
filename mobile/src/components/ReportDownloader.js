@@ -10,6 +10,8 @@ export default function ReportDownloader() {
   const pollTimerRef = useRef(null);
   const mountedRef = useRef(true);
   const generatingRef = useRef(false);
+  const maxPollAttempts = 60;
+  const pollIntervalMs = 2000;
 
   useEffect(() => {
     return () => {
@@ -35,8 +37,10 @@ export default function ReportDownloader() {
         throw new Error('Brak identyfikatora zadania raportu.');
       }
 
+      let pollAttempts = 0;
       const poll = async () => {
         if (!mountedRef.current || !generatingRef.current) return;
+        pollAttempts += 1;
 
         try {
           const statusRes = await driverApi.checkReportStatus(jobId);
@@ -70,7 +74,23 @@ export default function ReportDownloader() {
             return;
           }
 
-          pollTimerRef.current = setTimeout(poll, 2000);
+          if (currentStatus === 'NOT_FOUND' || currentStatus === 'ERROR') {
+            generatingRef.current = false;
+            pollTimerRef.current = null;
+            setStatus('idle');
+            Alert.alert('Błąd', 'Zadanie raportu nie jest już dostępne.');
+            return;
+          }
+
+          if (pollAttempts >= maxPollAttempts) {
+            generatingRef.current = false;
+            pollTimerRef.current = null;
+            setStatus('idle');
+            Alert.alert('Błąd', 'Generowanie raportu trwa zbyt długo.');
+            return;
+          }
+
+          pollTimerRef.current = setTimeout(poll, pollIntervalMs);
         } catch (e) {
           generatingRef.current = false;
           pollTimerRef.current = null;

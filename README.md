@@ -59,10 +59,25 @@ Fleetify follows a **Microservices Architecture** containerized with Docker.
     ```
     Do not commit this file. Production builds must use an HTTPS API URL.
 
-    **RabbitMQ:** Docker Compose uses safe local defaults, so no extra file is
-    required for local development. To override them, copy the values from
-    `rabbitmq.env.example` into the root `.env` file or export them in your
-    shell. Use unique credentials in shared or production environments.
+    For local mobile access, add the same host address to the user-management
+    service environment:
+    ```env
+    # services/user-managment/.env
+    GATEWAY_IP_ADDRESS=<your-computer-ip>
+    ```
+    The value must match the host used in `EXPO_PUBLIC_API_URL`. For the
+    Android emulator, use `10.0.2.2` in both places. Keep this setting in the
+    local, untracked `.env` file.
+
+    **RabbitMQ:** Docker Compose requires credentials from the root `.env` file
+    or the shell environment. Copy `rabbitmq.env.example` to `.env` and replace
+    the example password before starting the stack:
+    ```env
+    RABBITMQ_DEFAULT_USER=fleetify
+    RABBITMQ_DEFAULT_PASS=<unique-local-password>
+    ```
+    Use unique credentials in shared or production environments. Do not commit
+    the root `.env` file.
 
     For EAS builds, configure `EXPO_PUBLIC_API_URL` in each EAS environment
     (`development`, `preview`, and `production`) instead of adding it to
@@ -158,7 +173,7 @@ must not be committed.
 │   ├── dashboard-service/   # API Aggregator
 │   ├── notifications-service/ # RabbitMQ consumer
 │   ├── report-service/      # PDF report generation (Java/Spring Boot)
-│   ├── user-management/     # Django Auth system
+│   ├── user-managment/      # Django Auth system
 │   └── vehicle-service/     # Vehicle CRUD
 └── docker-compose.yaml      # Orchestration
 ```
