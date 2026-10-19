@@ -4,19 +4,19 @@
 
 ---
 
-##  Key Features
+## Key Features
 
-*   ** Interactive Dashboard:** Role-based panels for Administrators (fleet overview, health stats) and Employees (assigned vehicles, tasks).
-*   ** Vehicle Management:** Complete inventory tracking including VIN, fuel type (Gas, Diesel, EV, Hybrid), mileage, and service status.
-*   ** Predictive Analytics:** AI-powered cost forecasting, fuel consumption trends, and efficiency analysis.
-*   ** Cost Control:** Detailed logging for fuel, trips, and tolls with automated cost breakdown charts.
-*   ** Smart Notifications:** Real-time alerts for service requirements, task assignments, and critical vehicle issues via RabbitMQ.
-*   ** Team Management:** Employee onboarding, role assignment, and presence tracking.
-*   ** PDF Reports:** Professional fleet reports with async generation via RabbitMQ queue processing.
+- **Interactive Dashboard:** Role-based panels for administrators and employees.
+- **Vehicle Management:** Inventory tracking including VIN, fuel type, mileage, and service status.
+- **Predictive Analytics:** Cost forecasting, fuel consumption trends, and efficiency analysis.
+- **Cost Control:** Logging for fuel, trips, and tolls with automated cost breakdowns.
+- **Smart Notifications:** Alerts for service requirements, task assignments, and critical vehicle issues via RabbitMQ.
+- **Team Management:** Employee onboarding, role assignment, and presence tracking.
+- **PDF Reports:** Asynchronous report generation through RabbitMQ.
 
 ---
 
-##  Architecture
+## Architecture
 
 Fleetify follows a **Microservices Architecture** containerized with Docker.
 
@@ -27,84 +27,107 @@ Fleetify follows a **Microservices Architecture** containerized with Docker.
 | **Dashboard Service** | Python (FastAPI) | BFF (Backend for Frontend) aggregator that orchestrates data between services. |
 | **Vehicle Service** | Python (FastAPI), PostgreSQL | Manages vehicle inventory, status, and technical specifications. |
 | **Analytics Service** | Python (FastAPI), PostgreSQL | Handles data crunching, cost predictions, and chart generation. |
-| **User Management** | Python (Django), PostgreSQL | Handles Authentication (JWT), user profiles, and team structures. |
+| **User Management** | Python (Django), PostgreSQL | Handles bearer-session authentication, user profiles, and team structures. |
 | **Notifications** | Python (FastAPI), RabbitMQ | Async service for processing alerts and delivering messages. |
 | **Report Service** | Java (Spring Boot), RabbitMQ, iText | Async PDF report generation with queue-based processing and professional formatting. |
 | **Gateway** | Nginx | Reverse proxy routing traffic to appropriate services. |
 
 ---
 
-##  Getting Started
+## Getting Started
 
 ### Prerequisites
 
-*   **Docker** and **Docker Compose** installed on your machine.
-*   **Node.js** (v18+) for local frontend development (optional).
+- **Docker** and **Docker Compose** installed on your machine.
+- **Node.js 20+** for local frontend or mobile development.
+- An existing Fleetify user account for signing in to the mobile app.
 
 ### Installation
 
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/yourusername/fleetify.git
-    cd fleetify
-    ```
+1. **Clone the repository**
 
-2.  **Environment Configuration**
-    Ensure `.env` files are present in the service directories where required.
-    *   *Note: The frontend expects a `.env` file in `frontend/`.*
+   ```bash
+   git clone https://github.com/DawidBrrr/Fleetify.git
+   cd Fleetify
+   ```
 
-    **Mobile app:** create a local, untracked `mobile/.env` file with:
-    ```env
-    EXPO_PUBLIC_API_URL=http://<your-computer-ip>:8080/api
-    ```
-    Do not commit this file. Production builds must use an HTTPS API URL.
+2. **Configure environment files**
 
-    For local mobile access, add the same host address to the user-management
-    service environment:
-    ```env
-    # services/user-managment/.env
-    GATEWAY_IP_ADDRESS=<your-computer-ip>
-    ```
-    The value must match the host used in `EXPO_PUBLIC_API_URL`. For the
-    Android emulator, use `10.0.2.2` in both places. Keep this setting in the
-    local, untracked `.env` file.
+   Docker Compose expects these local, untracked files:
 
-    **RabbitMQ:** Docker Compose requires credentials from the root `.env` file
-    or the shell environment. Copy `rabbitmq.env.example` to `.env` and replace
-    the example password before starting the stack:
-    ```env
-    RABBITMQ_DEFAULT_USER=fleetify
-    RABBITMQ_DEFAULT_PASS=<unique-local-password>
-    ```
-    Use unique credentials in shared or production environments. Do not commit
-    the root `.env` file.
+   - `.env` — RabbitMQ credentials used by Compose.
+   - `frontend/.env` — frontend API configuration.
+   - `services/nginx-gateway/.env`
+   - `services/user-managment/.env`
+   - `services/vehicle-service/.env`
+   - `services/dashboard-service/.env`
+   - `services/notifications-service/.env`
+   - `services/report-service/.env`
 
-    For EAS builds, configure `EXPO_PUBLIC_API_URL` in each EAS environment
-    (`development`, `preview`, and `production`) instead of adding it to
-    `mobile/eas.json`:
-    ```bash
-    cd mobile
-    eas env:create --environment preview --name EXPO_PUBLIC_API_URL --value https://<your-api-host>/api --visibility plaintext
-    ```
-    Repeat the command for the other environments with their corresponding
-    API URLs.
+   The exact service-specific values depend on the local deployment. Never
+   commit passwords, access tokens, API keys, or other secrets.
 
-    Do not commit `.env` files, access tokens, passwords, or API keys. The
-    local `mobile/.env` file is ignored by Git.
+   Create the root RabbitMQ environment file from the example:
 
-3.  **Build and Run with Docker Compose**
-    This command will build all microservices, set up the databases, and start the Nginx gateway.
-    ```bash
-    docker-compose up --build
-    ```
+   ```powershell
+   Copy-Item rabbitmq.env.example .env
+   ```
 
-4.  **Access the Application**
-    *   **Frontend:** [http://localhost:5173](http://localhost:5173) 
-    *   **API Gateway:** [http://localhost:8080](http://localhost:8080)
+   Replace the example password in `.env` before starting the stack:
+
+   ```env
+   RABBITMQ_DEFAULT_USER=fleetify
+   RABBITMQ_DEFAULT_PASS=<unique-local-password>
+   ```
+
+   For local frontend development, `frontend/.env` should contain:
+
+   ```env
+   VITE_API_BASE_URL=http://localhost:8080/api
+   ```
+
+3. **Build and run with Docker Compose**
+
+   This builds the microservices, starts the databases, and runs the Nginx
+   gateway:
+
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Access the application**
+
+   - **Frontend:** [http://localhost:5173](http://localhost:5173)
+   - **API Gateway:** [http://localhost:8080](http://localhost:8080)
 
 ### Mobile development
 
-Install dependencies and start Expo from the `mobile` directory:
+The mobile app uses the API gateway. Start the backend first, then create
+`mobile/.env`:
+
+```env
+EXPO_PUBLIC_API_URL=http://<your-computer-ip>:8080/api
+```
+
+Choose the URL based on the device:
+
+- Physical phone: use the computer's LAN IP, and connect both devices to the same network.
+- Android Emulator: use `http://10.0.2.2:8080/api`.
+- iOS Simulator: usually use `http://localhost:8080/api`.
+- Production or shared preview builds: use an HTTPS URL.
+
+For a physical phone or emulator, set the same host value in
+`services/user-managment/.env`:
+
+```env
+GATEWAY_IP_ADDRESS=<your-computer-ip>
+```
+
+Restart Docker Compose after changing this value. On Windows, make sure the
+firewall allows incoming connections to port `8080`. Do not use `localhost`
+for a physical phone.
+
+Install dependencies and start Expo:
 
 ```bash
 cd mobile
@@ -112,20 +135,27 @@ npm install
 npx expo start --clear --lan
 ```
 
-For a physical phone, connect the phone and computer to the same network and
-set the computer's local IP address in `mobile/.env`:
+The mobile app currently provides login but not registration. Use an existing
+Fleetify account created through the web application or backend.
 
-```env
-EXPO_PUBLIC_API_URL=http://<your-computer-ip>:8080/api
-```
-
-Do not use `localhost` on a physical phone. For the Android emulator, use
-`http://10.0.2.2:8080/api`. Production builds must use an HTTPS API URL.
+Do not commit `mobile/.env`. The `EXPO_PUBLIC_API_URL` value is bundled into
+the application, so it must not contain secrets.
 
 ### EAS builds
 
-After configuring `EXPO_PUBLIC_API_URL` in the EAS environment, build with the
-profile that matches the target:
+Log in to EAS and configure `EXPO_PUBLIC_API_URL` separately for the
+`development`, `preview`, and `production` environments:
+
+```bash
+eas login
+cd mobile
+eas env:create --environment preview --name EXPO_PUBLIC_API_URL --value https://<your-api-host>/api --visibility plaintext
+```
+
+Repeat the command for the other environments with their corresponding HTTPS
+URLs. The API URL is not a secret and can use `plaintext` visibility.
+
+Build with the profile that matches the target:
 
 ```bash
 cd mobile
@@ -134,8 +164,8 @@ eas build --profile preview --platform android
 eas build --profile production --platform android
 ```
 
-The `preview` profile produces an installable APK. The `production` profile is
-intended for release builds.
+The `development` profile produces a development build, `preview` produces an
+installable APK, and `production` is intended for release builds.
 
 ### Validation
 
@@ -152,7 +182,7 @@ must not be committed.
 
 ---
 
-##  Project Structure
+## Project Structure
 
 ```text
 .
